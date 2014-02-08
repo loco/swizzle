@@ -6,12 +6,12 @@ use Guzzle\Tests\GuzzleTestCase;
 use Guzzle\Service\Builder\ServiceBuilder;
 use Guzzle\Http\Message\Response;
 use Guzzle\Plugin\Mock\MockPlugin;
-use Loco\Utils\Swizzle\DocsClient;
+use Loco\Utils\Swizzle\SwaggerClient;
 
 /**
- * Tests DocsClient
+ * Tests SwaggerClient
  */
-class DocsClientTest extends GuzzleTestCase {
+class SwaggerClientTest extends GuzzleTestCase {
     
     /**
      * @var string
@@ -69,12 +69,12 @@ class DocsClientTest extends GuzzleTestCase {
     
     
     /**
-     * @covers Loco\Utils\Swizzle\DocsClient::factory
-     * @returns DocsClient
+     * @covers Loco\Utils\Swizzle\SwaggerClient::factory
+     * @returns SwaggerClient
      */
     public function testFactory(){
         $base_url = 'https://localise.biz/api/docs';
-        $client = DocsClient::factory( compact('base_url') );
+        $client = SwaggerClient::factory( compact('base_url') );
         $this->assertEquals( $base_url, $client->getBaseUrl(), 'base_url not passed to client' );
         return $client;
     }
@@ -84,9 +84,9 @@ class DocsClientTest extends GuzzleTestCase {
     /**
      * @group mock
      * @depends testFactory
-     * @returns DocsClient
+     * @returns SwaggerClient
      */
-    public function testMockResourceListing( DocsClient $client ){
+    public function testMockResourceListing( SwaggerClient $client ){
         $plugin = new MockPlugin();
         $plugin->addResponse( new Response( 200, array(), $this->resourcesJson ) );
         $client->addSubscriber( $plugin );
@@ -103,9 +103,9 @@ class DocsClientTest extends GuzzleTestCase {
     /**
      * @group mock
      * @depends testFactory
-     * @returns DocsClient
+     * @returns SwaggerClient
      */
-    public function testMockApiDeclaration( DocsClient $client ){
+    public function testMockApiDeclaration( SwaggerClient $client ){
         $plugin = new MockPlugin();
         $plugin->addResponse( new Response( 200, array(), $this->declarationJson ) );
         $client->addSubscriber( $plugin );

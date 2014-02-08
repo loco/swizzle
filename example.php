@@ -5,13 +5,13 @@
  * Pulls down the Loco API and outputs the Guzzle JSON service description.
  */
 
-// All we need is the DocsModel class.
+// All we need is the Swizzle class.
 require __DIR__.'/vendor/autoload.php';
-use Loco\Utils\Swizzle\DocsModel;
+use Loco\Utils\Swizzle\Swizzle;
 
 
 // Intialize service with name and description
-$service = new DocsModel( 'loco', 'Loco REST API' );
+$service = new Swizzle( 'loco', 'Loco REST API' );
 
 // show progress messages in output
 $service->verbose( STDERR );

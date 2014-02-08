@@ -17,7 +17,7 @@ use Loco\Utils\Swizzle\Response\ApiDeclaration;
 /**
  * Models Swagger API declarations and converts to Guzzle service descriptions.
  */
-class DocsModel {
+class Swizzle {
     
     /**
      * Monolog logger for debug output
@@ -67,7 +67,7 @@ class DocsModel {
  
     /**
      * Enable debug logging to show build progress
-     * @return DocsModel
+     * @return Swizzle
      */
     public function verbose( $resource ){
         $this->logger->pushHandler( new StreamHandler( $resource, Logger::DEBUG ) );
@@ -88,7 +88,7 @@ class DocsModel {
     
     /**
      * Set delay between HTTP requests
-     * @return DocsModel
+     * @return Swizzle
      */ 
     public function setDelay( $microseconds ){
         $this->delay = (int) $microseconds;
@@ -98,7 +98,7 @@ class DocsModel {
     
     /**
      * Set an initial value to be passed to ServiceDescription constructor.
-     * @return DocsModel
+     * @return Swizzle
      */
     private function setInitValue( $key, $value ){
         if( $this->service ){
@@ -111,7 +111,7 @@ class DocsModel {
     
     /**
      * Set apiVersion
-     * @return DocsModel
+     * @return Swizzle
      */
     public function setApiVersion( $apiVersion ){
         return $this->setInitValue( 'apiVersion', $apiVersion );
@@ -133,7 +133,7 @@ class DocsModel {
     
     /**
      * Apply a bespoke responseClass to a given method
-     * @return DocsModel
+     * @return Swizzle
      */
     public function registerResponseClass( $name, $class ){
         $this->responses[$name] = $class;
@@ -153,7 +153,7 @@ class DocsModel {
      */
     public function build( $base_url ){
         $this->service = null;
-        $client = DocsClient::factory( compact('base_url') );
+        $client = SwaggerClient::factory( compact('base_url') );
         $this->debug('pulling resource listing from %s', $base_url );
         /* @var $listing ResourceListing */
         $listing = $client->getResources();
@@ -206,7 +206,7 @@ class DocsModel {
     
     /**
      * Add a Swagger model definition
-     * @return DocsModel
+     * @return Swizzle
      */
     public function addModel( array $model ){
         static $common = array(
@@ -245,7 +245,7 @@ class DocsModel {
     /**
      * Add a Swagger Api declaration which may consist of multiple operations
      * @param array consisting of path, description and array of operations
-     * @return DocsModel
+     * @return Swizzle
      */    
     public function addApi( array $api, $basePath = '' ){
         $service = $this->getDescription();

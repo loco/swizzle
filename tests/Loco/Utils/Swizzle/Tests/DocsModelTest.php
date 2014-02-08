@@ -2,20 +2,20 @@
 
 namespace Loco\Utils\Swizzle\Tests;
 
-use Loco\Utils\Swizzle\DocsModel;
+use Loco\Utils\Swizzle\Swizzle;
 use Guzzle\Service\Description\ServiceDescription;
 
 /**
- * Tests DocsModel
+ * Tests Swizzle
  */
-class DocsModelTest extends \PHPUnit_Framework_TestCase {
+class SwizzleTest extends \PHPUnit_Framework_TestCase {
     
     
     /**
-     * @return DocsModel
+     * @return Swizzle
      */
     public function testInitializeModel(){
-        $model = new DocsModel( 'test', 'A test API', '1.0' );
+        $model = new Swizzle( 'test', 'A test API', '1.0' );
         $descr = $model->getDescription();
         $this->assertEquals('test', $descr->getName() );
         $this->assertEquals('1.0', $descr->getApiVersion() );
@@ -27,9 +27,9 @@ class DocsModelTest extends \PHPUnit_Framework_TestCase {
     /**
      * Test adding of a model
      * @depends testInitializeModel
-     * @return DocsModel
+     * @return Swizzle
      */    
-    public function testModelAddition( DocsModel $model ){
+    public function testModelAddition( Swizzle $model ){
         // mock a Swagger model definition with one mandatory property    
         $def = array(
             'id' => 'fooType',
@@ -56,9 +56,9 @@ class DocsModelTest extends \PHPUnit_Framework_TestCase {
     /**
      * Test adding of an operation with two methods
      * @depends testModelAddition
-     * @return DocsModel
+     * @return Swizzle
      */    
-    public function testOperationAddition( DocsModel $model ){
+    public function testOperationAddition( Swizzle $model ){
         // mock a Swagger API with two ops
         $api = array (
             'path' => '/test',
@@ -91,9 +91,9 @@ class DocsModelTest extends \PHPUnit_Framework_TestCase {
     /**
      * Test operation parameters
      * @depends testOperationAddition
-     * @return DocsModel
+     * @return Swizzle
      */    
-    public function testOperationParameters( DocsModel $model ){
+    public function testOperationParameters( Swizzle $model ){
         // mock a Swagger API op with params 
         $api = array (
             'path' => '/test2',

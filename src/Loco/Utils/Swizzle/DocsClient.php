@@ -12,13 +12,13 @@ use Guzzle\Service\Description\ServiceDescription;
  * @method array getResources
  * @method array getDeclaration
  */
-class DocsClient extends Client {
+class SwaggerClient extends Client {
 
     
     /**
      * Factory method to create a new Swagger Docs client.
      * @param array|Collection $config Configuration data
-     * @return DocsClient
+     * @return SwaggerClient
      */
     public static function factory( $config = array() ){
        
