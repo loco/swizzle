@@ -2,7 +2,7 @@
 <?php
 /**
  * Swizzle example.
- * Pulls down the Loco API and outputs the Guzzle JSON service description.
+ * Pulls down the Loco API and outputs the Guzzle service description.
  */
 
 // All we need is the Swizzle class.
