@@ -1,0 +1,30 @@
+{
+    "name": "loco/swizzle",
+    "license": "MIT",
+    "type": "library",
+    "keywords": ["api","Guzzle","Swagger"],
+    "description": "Build Guzzle service descriptions from Swagger compliant APIs",
+    "homepage" : "https://github.com/loco-app/php-swizzle",
+    "authors": [
+        {
+            "name": "Tim Whitlock",
+            "email": "support at localise dot biz",
+            "homepage": "https://localise.biz/",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.3",
+        "guzzle/guzzle": "~3.7"
+    },
+    "autoload": {
+        "psr-0": {
+            "Loco\\Utils\\Swizzle": "src/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.0.x-alpha"
+        }
+    }   
+}
