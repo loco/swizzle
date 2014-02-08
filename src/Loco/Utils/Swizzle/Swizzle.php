@@ -396,7 +396,9 @@ class Swizzle {
      */
     public function export(){
         $service = $this->getServiceDescription();
-        return var_export( $service->toArray(), 1 ); 
+        $comment = sprintf("/* Service definition generated at %s */", date('r') );
+        $source = var_export( $service->toArray(), 1 );
+        return "<?php\n".$comment."\nreturn ".$source.";\n"; 
     }    
     
 }
