@@ -5,6 +5,6 @@ Build [Guzzle](http://guzzlephp.org) service descriptions from [Swagger](https:/
 
 ## Usage 
 
-See example.php
+See [example.php](https://github.com/loco-app/swizzle/blob/master/example.php)
 
 Better docs on the way.
