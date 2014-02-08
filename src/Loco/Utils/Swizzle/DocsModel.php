@@ -2,6 +2,9 @@
 
 namespace Loco\Utils\Swizzle;
 
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
+
 use Guzzle\Service\Description\ServiceDescription;
 use Guzzle\Service\Description\Operation;
 use Guzzle\Service\Description\Parameter;
@@ -15,6 +18,12 @@ use Loco\Utils\Swizzle\Response\ApiDeclaration;
  * Models Swagger API declarations and converts to Guzzle service descriptions.
  */
 class DocsModel {
+    
+    /**
+     * Monolog logger for debug output
+     * @var Logger
+     */
+    private $logger;     
     
     /**
      * Expected swagger spec version
@@ -39,13 +48,52 @@ class DocsModel {
      */    
     private $responses = array();
     
+    /**
+     * Delay between HTTP requests in microseconds
+     * @var int
+     */    
+    private $delay = 200000;   
     
     /**
      * Construct with minimum mandatory parameters
      */
     public function __construct( $name, $description = '', $apiVersion = '' ){
         $this->init = compact('name','description','apiVersion');
-    }    
+        $this->logger = new Logger('swizzle');
+        // if we don't add a handler we get debug messages by default.
+        $this->logger->pushHandler( new StreamHandler('php://stderr', Logger::ERROR ) );
+    }
+    
+ 
+    /**
+     * Enable debug logging to show build progress
+     * @return DocsModel
+     */
+    public function verbose( $resource ){
+        $this->logger->pushHandler( new StreamHandler( $resource, Logger::DEBUG ) );
+        return $this;
+    }
+    
+    
+    /**
+     * @internal Log debug events in verbose mode
+     */
+    private function debug( $message ){
+        if( 1 < func_num_args() ){
+            $message = call_user_func_array( 'sprintf', func_get_args() );
+        }
+        $this->logger->addDebug( $message );
+    }        
+    
+    
+    /**
+     * Set delay between HTTP requests
+     * @return DocsModel
+     */ 
+    public function setDelay( $microseconds ){
+        $this->delay = (int) $microseconds;
+        return $this;
+    }
     
     
     /**
@@ -106,11 +154,15 @@ class DocsModel {
     public function build( $base_url ){
         $this->service = null;
         $client = DocsClient::factory( compact('base_url') );
+        $this->debug('pulling resource listing from %s', $base_url );
         /* @var $listing ResourceListing */
         $listing = $client->getResources();
         // check this looks like a resource listing
         if( ! $listing->isSwagger() ){
             throw new \Exception("This doesn't look like a Swagger spec");
+        }
+        if( ! $listing->getApis() ){
+            $this->logger->addAlert( "Resource listing doesn't define any APIs" );
         }
         // check swagger version
         if( self::SWAGGER_VERSION !== $listing->getSwaggerVersion() ){
@@ -118,6 +170,7 @@ class DocsModel {
         }
         // Declared version overrides anything we've set
         if( $version = $listing->getApiVersion() ){
+            $this->debug(' + set apiVersion %s', $version );
             $this->setApiVersion( $version );
         }
         // Set description if missing from constructor
@@ -129,20 +182,23 @@ class DocsModel {
         $service = $this->getDescription();
         // ready to pull each api declaration
         foreach( $listing->getApiPaths() as $path ){
-            // @todo do proper path resolution, allowing a cross-domain spec.
-            printf(" pulling %s ...\n", $path );
-            usleep( 250000 );
+            if( $this->delay ){
+                usleep( $this->delay );
+            }
+            // @todo do proper path resolution here, allowing a cross-domain spec.
+            $this->debug(' pulling %s ...', $path );
             $declaration = $client->getDeclaration( compact('path') );
             foreach ( $declaration->getModels() as $model ) {
-                printf(" + adding model %s ...\n", $model['id'] );
+                $this->debug(' + adding model %s ...', $model['id'] );
                 $this->addModel( $model );
             }
             $url = $declaration->getBasePath();
             foreach( $declaration->getApis() as $api ){
-                printf(" + adding api %s%s ...\n", $url, $api['path'] );
+                $this->debug(' + adding api %s%s ...', $url, $api['path'] );
                 $this->addApi( $api, $url );
             }
         }
+        $this->debug('finished');
     }
     
     

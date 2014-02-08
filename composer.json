@@ -4,7 +4,7 @@
     "type": "library",
     "keywords": ["api","Guzzle","Swagger"],
     "description": "Build Guzzle service descriptions from Swagger compliant APIs",
-    "homepage" : "https://github.com/loco-app/php-swizzle",
+    "homepage" : "https://github.com/loco-app/swizzle",
     "authors": [
         {
             "name": "Tim Whitlock",
@@ -15,7 +15,8 @@
     ],
     "require": {
         "php": ">=5.3.3",
-        "guzzle/guzzle": "~3.7"
+        "guzzle/guzzle": "~3.7",
+        "monolog/monolog": "1.*"
     },
     "autoload": {
         "psr-0": {

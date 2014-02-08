@@ -13,6 +13,12 @@ use Loco\Utils\Swizzle\DocsModel;
 // Intialize service with name and description
 $service = new DocsModel( 'loco', 'Loco REST API' );
 
+// show progress messages in output
+$service->verbose( STDERR );
+
+// Set a short delay between HTTP calls
+$service->setDelay( 200000 );
+
 // Register custom Guzzle response classes - such things are meaningless to Swagger.
 // These classes don't have have to exist in this runtime, they just go into the service definition.
 $raw = '\Loco\Http\Response\RawResponse';
@@ -29,5 +35,7 @@ $service->build('http://localise.biz/api/docs');
 
 
 // export service description to JSON:
-$json = $service->toJson();
-echo $json;
+// echo $service->toJson();
+
+// export service description to PHP source
+echo $service->export();
