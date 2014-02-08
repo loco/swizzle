@@ -122,7 +122,7 @@ class Swizzle {
      * Get compiled Guzzle service description
      * @return ServiceDescription
      */
-    public function getDescription(){
+    public function getServiceDescription(){
         if( ! $this->service ){
             $this->service = new ServiceDescription( $this->init );
         }
@@ -179,7 +179,7 @@ class Swizzle {
             $this->init['description'] = $info['description']?:$this->init['title'];
         }
         // no more configs allowed now, Guzzle service gets constructed
-        $service = $this->getDescription();
+        $service = $this->getServiceDescription();
         // ready to pull each api declaration
         foreach( $listing->getApiPaths() as $path ){
             if( $this->delay ){
@@ -235,7 +235,7 @@ class Swizzle {
         else {
             $data['properties'] = array();
         }
-        $service = $this->getDescription();
+        $service = $this->getServiceDescription();
         $service->addModel( new Parameter($data) );
         return $this;
     }   
@@ -248,7 +248,7 @@ class Swizzle {
      * @return Swizzle
      */    
     public function addApi( array $api, $basePath = '' ){
-        $service = $this->getDescription();
+        $service = $this->getServiceDescription();
         if( $basePath ){
             $basePath = parse_url( $basePath, PHP_URL_PATH );
         }
@@ -265,8 +265,11 @@ class Swizzle {
             'type' => 'responseType',
             'notes' => 'responseNotes',
         );
+        static $defaults = array (
+            'httpMethod' => 'GET',
+        );
         foreach( $api['operations'] as $op ){
-            $config = $this->transformArray( $op, $common, $trans );
+            $config = $this->transformArray( $op, $common, $trans ) + $defaults;
             $config['uri'] = $path;
             // command must have a name, and must be unique across methods
             if( isset($op['nickname']) ){
@@ -274,7 +277,7 @@ class Swizzle {
             }
             // generate naff nickname if not specified
             else {
-                $method = isset($op['method']) ? $op['method'] : 'GET';
+                $method = strtolower( $config['httpMethod'] );
                 $id = $config['name'] = $method.'_'.str_replace('/','_',trim($path,'/') );
             }
             // allow response class override
@@ -381,7 +384,7 @@ class Swizzle {
         if( defined('JSON_PRETTY_PRINT') ){
             $options |= JSON_PRETTY_PRINT; // <- PHP>=5.4.0
         }
-        $service = $this->getDescription();
+        $service = $this->getServiceDescription();
         return json_encode( $service->toArray(), $options );
     }    
 
@@ -392,7 +395,7 @@ class Swizzle {
      * @return string
      */
     public function export(){
-        $service = $this->getDescription();
+        $service = $this->getServiceDescription();
         return var_export( $service->toArray(), 1 ); 
     }    
     

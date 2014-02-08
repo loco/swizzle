@@ -14,11 +14,13 @@ use Loco\Utils\Swizzle\SwaggerClient;
 class SwaggerClientTest extends GuzzleTestCase {
     
     /**
+     * Mock resource listing JSON
      * @var string
      */
     private $resourcesJson;
     
     /**
+     * Mock API declaration JSON
      * @var string
      */
     private $declarationJson;
@@ -114,12 +116,13 @@ class SwaggerClientTest extends GuzzleTestCase {
         ) );
         $this->assertInstanceOf('\Loco\Utils\Swizzle\Response\ApiDeclaration', $declaration );
         $this->assertEquals( '/ping', $declaration->getResourcePath() );
-        // apis
+        // Should have one API
         $apis = $declaration->getApis();
         $this->assertCount( 1, $apis );
-        // models
+        // Should have one model
         $models = $declaration->getModels();
         $this->assertCount( 1, $models );
+        $this->assertArrayHasKey( 'Echo', $models );
     }    
     
     

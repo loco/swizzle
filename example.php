@@ -9,7 +9,6 @@
 require __DIR__.'/vendor/autoload.php';
 use Loco\Utils\Swizzle\Swizzle;
 
-
 // Intialize service with name and description
 $service = new Swizzle( 'loco', 'Loco REST API' );
 
@@ -37,5 +36,5 @@ $service->build('http://localise.biz/api/docs');
 // export service description to JSON:
 // echo $service->toJson();
 
-// export service description to PHP source
+// export service description to PHP source:
 echo $service->export();
