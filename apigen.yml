@@ -3,5 +3,4 @@ destination: docs
 php: no
 main: Loco
 title: Swizzle
-baseUrl: https://github.com/loco-app/swizzle/tree/master/docs
 report: docs/report.xml

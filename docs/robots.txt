@@ -1,3 +1,0 @@
-User-agent: *
-Disallow:
-Sitemap: https://github.com/loco-app/swizzle/tree/master/docs/sitemap.xml
