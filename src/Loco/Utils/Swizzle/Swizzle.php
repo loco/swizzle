@@ -56,6 +56,9 @@ class Swizzle {
     
     /**
      * Construct with minimum mandatory parameters
+     * @param string Name of the API
+     * @param string Summary of the API
+     * @param string API version
      */
     public function __construct( $name, $description = '', $apiVersion = '' ){
         $this->init = compact('name','description','apiVersion');
@@ -67,6 +70,7 @@ class Swizzle {
  
     /**
      * Enable debug logging to show build progress
+     * @param string|resource
      * @return Swizzle
      */
     public function verbose( $resource ){
@@ -88,6 +92,7 @@ class Swizzle {
     
     /**
      * Set delay between HTTP requests
+     * @param int delay in microseconds
      * @return Swizzle
      */ 
     public function setDelay( $microseconds ){
@@ -110,7 +115,8 @@ class Swizzle {
     
     
     /**
-     * Set apiVersion
+     * Set API version string
+     * @param string api version
      * @return Swizzle
      */
     public function setApiVersion( $apiVersion ){
@@ -133,6 +139,8 @@ class Swizzle {
     
     /**
      * Apply a bespoke responseClass to a given method
+     * @param string name of command returning this response class
+     * @param string full class name for responseClass field
      * @return Swizzle
      */
     public function registerResponseClass( $name, $class ){
@@ -150,6 +158,8 @@ class Swizzle {
     /**
      * Build from a live endpoint
      * @param string Swagger compliant JSON endpoint for resource listing
+     * @throws \Exception
+     * @return Swizzle
      */
     public function build( $base_url ){
         $this->service = null;
@@ -199,6 +209,7 @@ class Swizzle {
             }
         }
         $this->debug('finished');
+        return $this;
     }
     
     
@@ -206,6 +217,7 @@ class Swizzle {
     
     /**
      * Add a Swagger model definition
+     * @param array model structure from Swagger
      * @return Swizzle
      */
     public function addModel( array $model ){
@@ -245,6 +257,7 @@ class Swizzle {
     /**
      * Add a Swagger Api declaration which may consist of multiple operations
      * @param array consisting of path, description and array of operations
+     * @param string URL from basePath field inferring the full location of each api path
      * @return Swizzle
      */    
     public function addApi( array $api, $basePath = '' ){

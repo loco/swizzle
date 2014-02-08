@@ -18,7 +18,8 @@ abstract class BaseResponse implements ResponseClassInterface {
     protected $raw;
 
     /**
-     * @internal Construct from http response
+     * Construct from http response
+     * @internal
      */
     final protected function __construct( Response $response ) {
         $this->raw = $response->json();
@@ -26,7 +27,8 @@ abstract class BaseResponse implements ResponseClassInterface {
     
     
     /**
-     * @internal Test if key was found in original JSON, even if empty
+     * Test if key was found in original JSON, even if empty
+     * @internal 
      * @param string
      * @return bool
      */
@@ -36,7 +38,8 @@ abstract class BaseResponse implements ResponseClassInterface {
     
     
     /**
-     * @internal Get raw data value
+     * Get raw data value
+     * @internal 
      * @return mixed
      */
     protected function get($key){
@@ -76,7 +79,7 @@ abstract class BaseResponse implements ResponseClassInterface {
     
     /**
      * Get all path strings in objects under apis:
-     * @return 
+     * @return array
      */   
     public function getApiPaths(){
         $paths = array();

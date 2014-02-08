@@ -11,7 +11,8 @@ class ApiDeclaration extends BaseResponse {
 
 
     /**
-     * @internal Create a response model object from a completed command
+     * Create a response model object from a completed command
+     * @internal
      * @param OperationCommand Command that serialized the request
      * @throws \Guzzle\Http\Exception\BadResponseException 
      * @return ApiDeclaration
