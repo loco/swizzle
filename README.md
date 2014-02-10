@@ -19,8 +19,10 @@ Installation is via [Composer](http://getcomposer.org/doc/00-intro.md#using-comp
 Add the latest stable version of [loco/swizzle](https://packagist.org/packages/loco/swizzle) to your project's composer.json file as follows:
 
 ```json
-"require": {
-  "loco/swizzle": "~1.0"
+{
+  "require": {
+    "loco/swizzle": "~1.0"
+  }
 }
 ```
 
