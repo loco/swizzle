@@ -320,7 +320,8 @@ class Swizzle {
             }
             // handle parameters
             if( isset($op['parameters']) ){
-                $config['parameters'] = $this->transformParams( $op['parameters'] );
+                $template = array( 'location' => 'query' );
+                $config['parameters'] = $this->transformParams( $op['parameters'], $template );
             }
             else {
                 $config['parameters'] = array();
@@ -436,7 +437,8 @@ class Swizzle {
 
         // handle object properties
         if( isset($source['properties']) ){
-            $target['properties'] = $this->transformParams( $source['properties'] );
+            $template = array( 'location' => 'json' );
+            $target['properties'] = $this->transformParams( $source['properties'], $template );
             // required params are an external array in Swagger, but applied individually as boolean in Guzzle
             if( isset($source['required']) ){
                 foreach( $source['required'] as $prop ){
