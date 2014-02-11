@@ -17,21 +17,15 @@ $builder->verbose( STDERR );
 
 // Register custom Guzzle response classes - such things are meaningless to Swagger.
 // These classes don't have have to exist in this runtime, they just go into the service definition.
-$raw = '\Loco\Http\Response\RawResponse';
-$zip = '\Loco\Http\Response\ZipResponse';
-$builder->registerResponseClass('exportArchive', $zip )
-        ->registerResponseClass('exportLocale', $raw )
-        ->registerResponseClass('exportAll', $raw )
-        ->registerResponseClass('convert', $raw );
-
+$builder->registerResponseClass('exportArchive', '\Loco\Http\Response\ZipResponse' );
        
 // Now we're ready to build from a live endpoint
 // This must be a Valid Swagger JSON resource listing.
-$builder->build('http://localise.biz/api/docs');        
+$builder->build('https://localise.biz/api/docs');        
 
 
 // export service description to JSON:
-// echo $builder->toJson();
+echo $builder->toJson();
 
 // export service description to PHP source:
-echo $builder->export();
+//echo $builder->export();
