@@ -122,7 +122,7 @@ class SwaggerClientTest extends GuzzleTestCase {
         // Should have one model
         $models = $declaration->getModels();
         $this->assertCount( 1, $models );
-        $this->assertArrayHasKey( 'Echo', $models );
+        $this->assertArrayHasKey( 'Echo', $models->toArray() );
     }    
     
     
