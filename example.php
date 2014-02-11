@@ -30,7 +30,7 @@ $service->registerResponseClass('exportArchive', $zip )
        
 // Now we're ready to build from a live endpoint
 // This must be a Valid Swagger JSON resource listing.
-$service->build('http://localise.biz/api/docs');        
+$service->build('http://ssl.loco.192.168.0.7.xip.io/api/docs');        
 
 
 // export service description to JSON:

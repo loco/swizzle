@@ -165,7 +165,7 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
         $builder->addApi( $api );
         $descr = $builder->getServiceDescription();    
         $op = $descr->getOperation('get_test_type_array');
-        // array-based model model should have been created on the fly
+        // array-based model should have been created on the fly
         $this->assertEquals( 'model', $op->getResponseType() );
         $this->assertEquals( 'fooType_array', $op->getResponseClass() );
     }
@@ -191,6 +191,10 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
         $builder->addApi( $api );
         $descr = $builder->getServiceDescription();    
         $op = $descr->getOperation('get_test_type_ints');
+        // anonymous model should have been created on the fly
+        $this->assertEquals( 'model', $op->getResponseType() );
+        $this->assertEquals( 'anon_type_integer_array', $op->getResponseClass() );
+        
     }     
     
 
