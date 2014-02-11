@@ -2,7 +2,7 @@
 namespace Loco\Utils\Swizzle\Response;
 
 use Guzzle\Service\Command\OperationCommand;
-
+use Loco\Utils\Swizzle\ModelCollection;
 
 /**
  * Response class for Swagger API declaration
@@ -43,10 +43,11 @@ class ApiDeclaration extends BaseResponse {
     
     /**
      * Get model definitions
-     * @return array
+     * @return ModelCollection
      */
     public function getModels(){
-        return $this->get('models')?:array();
+        $models = $this->get('models')?:array();
+        return new ModelCollection( $models );
     }
     
 }
