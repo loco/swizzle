@@ -199,12 +199,10 @@ class Swizzle {
             $this->debug(' pulling %s ...', $path );
             $declaration = $client->getDeclaration( compact('path') );
             foreach ( $declaration->getModels() as $model ) {
-                $this->debug(' + adding model %s ...', $model['id'] );
                 $this->addModel( $model );
             }
             $url = $declaration->getBasePath();
             foreach( $declaration->getApis() as $api ){
-                $this->debug(' + adding api %s%s ...', $url, $api['path'] );
                 $this->addApi( $api, $url );
             }
         }
@@ -218,38 +216,33 @@ class Swizzle {
     /**
      * Add a Swagger model definition
      * @param array model structure from Swagger
-     * @return Swizzle
+     * @return Parameter model added
      */
     public function addModel( array $model ){
-        static $common = array(
-            'description' => '',
-        );
-        static $trans = array(
-            'id' => 'name',
-        );
-        $data = $this->transformArray( $model, $common, $trans );
-        // @todo is type always "object" in json with no additional props?
-        $data['type'] = 'object';
-        $data['additionalProperties'] = false;
-        // properties
-        if( isset($model['properties']) ){
-            static $defaults = array( 'location' => 'json' );
-            $data['properties'] = $this->transformParams( $model['properties'], $defaults );
-            // required params are an external array
-            if( isset($model['required']) ){
-                foreach( $model['required'] as $prop ){
-                    if( isset($data['properties'][$prop]) ){
-                        $data['properties'][$prop]['required'] = true;
-                    }
-                }
-            }
+        $name = isset($model['id']) ? $model['id'] : '';
+        if( $name ){
+            $this->debug(' + adding model %s ...', $name );
         }
         else {
-            $data['properties'] = array();
+            $name = 'anon_'.self::hashArray($model);
+            $this->debug( ' + adding anonymous model: %s ...', $name );
         }
+        $defaults = array (
+            'name' => $name,
+            'type' => 'object',
+        );
+        // a model is basically a parameter, but has name property added
+        $data = $this->transformType( $model ) + $defaults;
+        if( 'object' === $data['type'] ){
+            $data['additionalProperties'] = false;
+        }
+        // required makes no sense at root of model
+        unset( $data['required'] );
+        // ok to add model
         $service = $this->getServiceDescription();
-        $service->addModel( new Parameter($data) );
-        return $this;
+        $model = new Parameter( $data, $service );
+        $service->addModel( $model );
+        return $model;
     }   
      
     
@@ -265,18 +258,20 @@ class Swizzle {
         if( $basePath ){
             $basePath = parse_url( $basePath, PHP_URL_PATH );
         }
+        $this->debug(' + adding api %s%s ...', $basePath, $api['path'] );
         // path is common to all swagger operations and specified relative to basePath
         // @todo proper uri merge
         $path = implode( '/', array( rtrim($basePath,'/'), ltrim($api['path'],'/') ) );
         // operation keys common to both swagger and guzzle
         static $common = array (
-            'summary' => '',
+            'items' => 1,
+            'summary' => 1,
         );
         // translate swagger -> guzzle 
         static $trans = array (
-            'method' => 'httpMethod',
             'type' => 'responseType',
             'notes' => 'responseNotes',
+            'method' => 'httpMethod',
         );
         static $defaults = array (
             'httpMethod' => 'GET',
@@ -293,25 +288,35 @@ class Swizzle {
                 $method = strtolower( $config['httpMethod'] );
                 $id = $config['name'] = $method.'_'.str_replace('/','_',trim($path,'/') );
             }
-            // allow response class override
+            // allow registered response class to override all
             if( isset($this->responses[$id]) ){
                 $config['responseType'] = 'class';
                 $config['responseClass'] = $this->responses[$id];
             }
-            // handle non-primative response types
+            // handle response type if defined
             else if( isset($config['responseType']) ){
-                $type = $config['responseType'];
-                // set to primatives
-                static $primatives = array( 'string' => 'string', 'array' => 'array' );
-                if( isset($primatives[$type]) ){
-                    $config['responseType'] = 'primitive';
-                    $config['responseClass'] = $primatives[$type];
-                }
-                // set to model if model matches
-                else if( $service->getModel($type) ){
-                    $config['responseType'] = 'model';
-                    $config['responseClass'] = $type;
-                }
+                $data = $this->transformType( $op );
+                $type = $data['type'];
+                // typed array responses require a model wrapper - $ref already validated
+                if( 'array' === $type && isset($data['items']) ){
+                    $ref = $data['items']['$ref'];
+                    $type = $ref.'_array';
+                    if( ! $service->getModel($type) ){
+                        $model = array(
+                            'id' => $type,
+                            'type' => 'array',
+                            'description' => 'Array of "'.$ref.'" objects',
+                            'items' => array (
+                                '$ref' => $ref,
+                            ),
+                        );
+                        $this->addModel( $model );
+                    }
+                } 
+                // Ensure service contructor calls inferResponseType by having class but no type
+                // This will handle Guzzle primatives, models and fall back to class
+                $config['responseClass'] = $type;
+                unset( $config['responseType'] );
             }
             // handle parameters
             if( isset($op['parameters']) ){
@@ -320,11 +325,28 @@ class Swizzle {
             else {
                 $config['parameters'] = array();
             }
+            // handle responseMessages -> errorResponses
+            if( isset($op['responseMessages']) ){
+                $config['errorResponses'] = $this->transformResponseMessages($op['responseMessages']);
+            }
+            else {
+                $config['errorResponses'] = array();
+            }
             // @todo how to deny additional parameters in command calls?
             // $config['additionalParameters'] = false;
-            // add operation
             $operation = new Operation( $config, $service );
+            // Sanitize custom response class because Guzzle doesn't know it doesn't exist yet
+            if( Operation::TYPE_CLASS === $operation->getResponseType() ){
+                $class = $operation->getResponseClass();
+                if( class_exists($class) ){
+                    // assume native PHP class, such as \DateTime.
+                }
+                else if( empty($this->responses[$id]) || $class !== $this->responses[$id] ){
+                    throw new \Exception('responseType defaulted to class "'.$class.'" but class not registered');
+                }
+            }
             $service->addOperation( $operation );
+            // next operation -
         }
         return $this;
     }
@@ -332,26 +354,15 @@ class Swizzle {
 
 
     /**
-     * Map a swagger parameter to a Guzzle one
+     * Transform a swagger parameter to a Guzzle one
      */
     private function transformParams( array $params, array $defaults = array() ){
-        // param keys common to both swagger and guzzle
-        static $common = array (
-            'type' => '',
-            'required' => '',
-            'description' => '',
-        );
-        // translate swagger -> guzzle 
-        static $trans = array (
-            'paramType' => 'location',
-            'defaultValue' => 'default',
-        );
         $target = array();
         foreach( $params as $name => $_param ){
             if( isset($_param['name']) ){    
                 $name = $_param['name'];
             }
-            $param = $this->transformArray( $_param, $common, $trans );
+            $param = $this->transformType( $_param );
             // location differences 
             if( isset($param['location']) && 'path' === $param['location'] ){
                 $param['location'] = 'uri';
@@ -363,6 +374,151 @@ class Swizzle {
             $target[$name] = $param + $defaults;
         }        
         return $target;
+    }
+
+
+
+    /**
+     * Transform an object holding a Swagger data type into a Guzzle one
+     * @param array Swagger schema
+     * @return array Guzzle schema
+     */
+    private function transformType( array $source ){
+        // keys common to both swagger and guzzle
+        static $common = array (
+            'type' => 1,
+            'enum' => 1,
+            'items' => 1,
+            'required' => 1,
+            'description' => 1,
+        );
+        static $trans = array (
+            'paramType' => 'location',
+            'defaultValue' => 'default',
+        );
+        // initial translation
+        $target = $this->transformArray( $source, $common, $trans );
+        
+        // transform type if defined
+        if( isset($target['type']) ){
+            $format = isset($source['format']) ? $source['format'] : '';
+            $type = $target['type'] = $this->transformPrimative( $target['type'], $format );
+        }
+        // else fall back to most likely intention
+        else if( isset($source['properties']) ){
+            $type = $target['type'] = 'object';
+        }
+        else {
+            $type = $target['type'] = 'string';
+        }
+
+        // handle array of types entities
+        if( isset($target['items']) ){
+            $type = $target['type'] = 'array';
+            // resolve model reference ensuring model exists
+            // @todo should $ref be allowed to resolve to a registered class?
+            if( isset($target['items']['$ref']) ){
+                $ref = $target['items']['$ref'];
+                if( ! $this->getServiceDescription()->getModel($ref) ){
+                    throw new \Exception('"'.$ref.'" encountered as items $ref but not defined as a model');
+                }
+            }
+            // Else define a literal model definition on the fly. 
+            // Guzzle will resolve back to literals on output, but it helps us resolve typed arrays and such
+            else {
+                //$target['items'] = $this->transformType( $target['items'] );
+                $model = $this->addModel( $target['items'] );
+                $target['items'] = array(
+                    '$ref' => $model->getName(),
+                );
+            }
+        }
+
+        // handle object properties
+        if( isset($source['properties']) ){
+            $target['properties'] = $this->transformParams( $source['properties'] );
+            // required params are an external array in Swagger, but applied individually as boolean in Guzzle
+            if( isset($source['required']) ){
+                foreach( $source['required'] as $prop ){
+                    if( isset($target['properties'][$prop]) ){
+                        $target['properties'][$prop]['required'] = true;
+                    }
+                }
+            }
+        }
+        else if( 'object' === $type ) {
+            $target['properties'] = array();
+        }
+        return $target;
+    }
+    
+    
+    
+    /**
+     * Transform various primative aliases that Swagger uses
+     * @see https://github.com/wordnik/swagger-core/wiki/Datatypes
+     * @param string swagger primative as per JSON-Schema Draft 4. [integer|number|string|boolean]
+     * @param string swagger disambiguator, e.g. date when string is a date
+     * @return string Guzzle primative
+     */
+    private function transformPrimative( $type, $format = '' ){
+        static $aliases = array (
+            // empties
+            'void' => '',
+            'null' => '',
+            // integers
+            'integer' => 'integer',
+            'int32'   => 'integer',
+            'int64'   => 'integer',
+            // floats
+            'number' => 'number',
+            'double' => 'number',
+            'float'  => 'number',
+            // dates
+            'date'      => 'date',
+            'dateTime'  => 'date',
+            'date-time' => 'date',
+        );        
+        if( $format ){
+            $format = isset($aliases[$format]) ? $aliases[$format] : $format;
+            if( 'date' === $format ){
+                return '\\DateTime'; // <- ?
+            }
+        }
+        $type = isset($aliases[$type]) ? $aliases[$type] : $type;
+        // @todo how to handle floats?
+        if( 'number' === $type ){
+            return 'string'; // <- ?
+        }
+        // Swagger permits "void" as a responseType
+        // Guzzle has no real notion of an empty response and defaults to array
+        // That means at least a json string containing "[]" which isn't true of an empty response
+        if( ! $type ){
+            return 'string';
+        }
+        return $type;
+    }    
+
+
+
+    /**
+     * Transform Swagger responseMessages to Guzzle errorResponses.
+     * @todo support registration of 'class' property?
+     * @param array containing code and message
+     * @return array containing code and phrase
+     */
+    private function transformResponseMessages( array $responseMessages ){
+        static $common = array (
+            'code' => 1,
+        ),
+        $trans = array (
+            'message' => 'phrase',
+        );
+        $errorResponses = array();
+        foreach( $responseMessages as $message ){
+            $errorResponses[] = $this->transformArray( $message, $common, $trans );
+        }
+        return $errorResponses;
     }
 
 
@@ -386,6 +542,32 @@ class Swizzle {
         return $guzzle;
     }
     
+    
+    
+    /**
+     * Utility, hashes an array into something human readable if less than 32 chars.
+     * Example: Use for creating anonymous model names, such as type_string
+     */
+    private static function hashArray( array $arr, array $words = array(), $recursion = false ){
+        foreach( $arr as $key => $val ){
+            $words[] = $key;
+            if( is_array($val) ){
+                $words = self::hashArray( $val, $words, true );
+            }
+            else {
+                $words[] = (string) $val;
+            }
+        }
+        if( $recursion ){
+            return $words;
+        }
+        $hash = implode('_', $words );
+        if( isset($hash{32}) ){
+            return md5( $hash );
+        }
+        return $hash;
+    }    
+
     
     
     /**

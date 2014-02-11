@@ -96,7 +96,7 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
     public function testOperationParameters( Swizzle $builder ){
         // mock a Swagger API op with params 
         $api = array (
-            'path' => '/test2',
+            'path' => '/test/params',
             'operations' => array (
                 array (
                     'parameters' => array (
@@ -112,7 +112,7 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
         );
         $builder->addApi( $api );
         $descr = $builder->getServiceDescription();    
-        $op = $descr->getOperation('get_test2');
+        $op = $descr->getOperation('get_test_params');
         /* @var $param Guzzle\Service\Description\Parameter */
         $param = $op->getParam('foo');
         $this->assertEquals( 'uri', $param->getLocation() );
@@ -120,7 +120,99 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
         $this->assertTrue( $param->getRequired() );
         return $builder;
     }
+    
 
+    
+    /**
+     * Test an operation that responds with the fooType model we added earlier
+     * @depends testModelAddition
+     */
+    public function testModelResponse( Swizzle $builder ){
+        // mock a Swagger API op that returns a fooType
+        $api = array (
+            'path' => '/test/type',
+            'operations' => array (
+                array (
+                    'type' => 'fooType',
+                ),
+            ),
+        );
+        $builder->addApi( $api );
+        $descr = $builder->getServiceDescription();    
+        $op = $descr->getOperation('get_test_type');
+        $this->assertEquals( 'model', $op->getResponseType() );
+        $this->assertEquals( 'fooType', $op->getResponseClass() );
+    }
+    
+
+    
+    /**
+     * Test an operation that responds with an array of fooType objects
+     * @depends testModelAddition
+     */
+    public function testModelArrayResponse( Swizzle $builder ){
+        $api = array (
+            'path' => '/test/type_array',
+            'operations' => array (
+                array (
+                    'type' => 'array',
+                    'items' => array (
+                      '$ref' => 'fooType',  
+                    ),
+                ),
+            ),
+        );
+        $builder->addApi( $api );
+        $descr = $builder->getServiceDescription();    
+        $op = $descr->getOperation('get_test_type_array');
+        // array-based model model should have been created on the fly
+        $this->assertEquals( 'model', $op->getResponseType() );
+        $this->assertEquals( 'fooType_array', $op->getResponseClass() );
+    }
+    
+    
+    
+    /**
+     * Test an operation that responds with an array of primatives
+     * @depends testInitializeModel
+     */
+    public function testDynamicArrayResponse( Swizzle $builder ){
+        $api = array (
+            'path' => '/test/type_ints',
+            'operations' => array (
+                array (
+                    'type' => 'array',
+                    'items' => array (
+                        'type' => 'integer', 
+                    ),
+                ),
+            ),
+        );
+        $builder->addApi( $api );
+        $descr = $builder->getServiceDescription();    
+        $op = $descr->getOperation('get_test_type_ints');
+    }     
+    
+
+
+
+    /**
+     * Test failure when response type falls back to an unregistered class
+     * @depends testInitializeModel
+     * @expectedException \Exception
+     */
+    public function testUnregisteredResponseClassFails( Swizzle $builder ){
+        // mock an operation with a bad response class
+        $api = array(
+            'path' => '/test/bad_class',
+            'operations' => array(
+                array(
+                    'type' => 'BadClass',
+                ),
+            ),
+        );
+        $builder->addApi( $api );
+    }
 
 
 
