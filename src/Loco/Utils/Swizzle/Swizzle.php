@@ -8,6 +8,7 @@ use Monolog\Handler\StreamHandler;
 use Guzzle\Service\Description\ServiceDescription;
 use Guzzle\Service\Description\Operation;
 use Guzzle\Service\Description\Parameter;
+use Guzzle\Parser\UriTemplate\UriTemplate;
 
 use Loco\Utils\Swizzle\Response\BaseResponse;
 use Loco\Utils\Swizzle\Response\ResourceListing;
@@ -52,7 +53,7 @@ class Swizzle {
      * Delay between HTTP requests in microseconds
      * @var int
      */    
-    private $delay = 200000;   
+    private $delay = 200000;
     
     /**
      * Construct with minimum mandatory parameters
@@ -67,7 +68,8 @@ class Swizzle {
         $this->logger->pushHandler( new StreamHandler('php://stderr', Logger::ERROR ) );
     }
     
- 
+    
+    
     /**
      * Enable debug logging to show build progress
      * @param string|resource
@@ -78,6 +80,7 @@ class Swizzle {
         return $this;
     }
     
+
     
     /**
      * @internal Log debug events in verbose mode
@@ -89,6 +92,7 @@ class Swizzle {
         $this->logger->addDebug( $message );
     }        
     
+
     
     /**
      * Set delay between HTTP requests
@@ -100,6 +104,7 @@ class Swizzle {
         return $this;
     }
     
+
     
     /**
      * Set an initial value to be passed to ServiceDescription constructor.
@@ -114,6 +119,17 @@ class Swizzle {
     }    
     
     
+    
+    /**
+     * Set base URL
+     * @param string base url common to all api calls
+     */
+    public function setBaseUrl( $baseUrl ){
+        return $this->setInitValue( 'baseUrl', $baseUrl );
+    }    
+
+    
+    
     /**
      * Set API version string
      * @param string api version
@@ -123,6 +139,7 @@ class Swizzle {
         return $this->setInitValue( 'apiVersion', $apiVersion );
     }
      
+
     
     /**
      * Get compiled Guzzle service description
@@ -190,20 +207,26 @@ class Swizzle {
         }
         // no more configs allowed now, Guzzle service gets constructed
         $service = $this->getServiceDescription();
+        // set base path from docs location if not provided
+        if( ! $service->getBaseUrl() ){
+            $service->setBaseUrl( self::mergeUrl('/', $base_url ) );
+        }
         // ready to pull each api declaration
         foreach( $listing->getApiPaths() as $path ){
             if( $this->delay ){
                 usleep( $this->delay );
             }
             // @todo do proper path resolution here, allowing a cross-domain spec.
-            $this->debug(' pulling %s ...', $path );
+            $this->debug('pulling %s ...', $path );
             $declaration = $client->getDeclaration( compact('path') );
             foreach ( $declaration->getModels() as $model ) {
                 $this->addModel( $model );
             }
-            $url = $declaration->getBasePath();
+            // Ensure a fully qualified base url for this api
+            $baseUrl = self::mergeUrl( $declaration->getBasePath(), $service->getBaseUrl() );
+            // add each api against required base url
             foreach( $declaration->getApis() as $api ){
-                $this->addApi( $api, $url );
+                $this->addApi( $api, $baseUrl );
             }
         }
         $this->debug('finished');
@@ -250,18 +273,23 @@ class Swizzle {
     /**
      * Add a Swagger Api declaration which may consist of multiple operations
      * @param array consisting of path, description and array of operations
-     * @param string URL from basePath field inferring the full location of each api path
+     * @param string URL inferring the base location for api path
      * @return Swizzle
      */    
-    public function addApi( array $api, $basePath = '' ){
+    public function addApi( array $api, $baseUrl = '' ){
         $service = $this->getServiceDescription();
-        if( $basePath ){
-            $basePath = parse_url( $basePath, PHP_URL_PATH );
+        if( ! $baseUrl ){
+            $baseUrl = $service->getBaseUrl();
         }
-        $this->debug(' + adding api %s%s ...', $basePath, $api['path'] );
-        // path is common to all swagger operations and specified relative to basePath
-        // @todo proper uri merge
-        $path = implode( '/', array( rtrim($basePath,'/'), ltrim($api['path'],'/') ) );
+        // resolve URL relative to base path for all operations
+        $uri = implode( '/', array( rtrim($baseUrl,'/'), ltrim($api['path'],'/') ) );
+        // keep domain only if not under service base path
+        if( 0 === strpos( $uri, $service->getBaseUrl() ) ){
+            $uri = preg_replace('!^https?://[^/]+!', '', $uri );
+        }
+        $this->debug(' + adding api %s ...', $uri );
+        
+        // no need for full url if relative to current
         // operation keys common to both swagger and guzzle
         static $common = array (
             'items' => 1,
@@ -278,7 +306,7 @@ class Swizzle {
         );
         foreach( $api['operations'] as $op ){
             $config = $this->transformArray( $op, $common, $trans ) + $defaults;
-            $config['uri'] = $path;
+            $config['uri'] = $uri;
             // command must have a name, and must be unique across methods
             if( isset($op['nickname']) ){
                 $id = $config['name'] = $op['nickname'];
@@ -286,7 +314,7 @@ class Swizzle {
             // generate naff nickname if not specified
             else {
                 $method = strtolower( $config['httpMethod'] );
-                $id = $config['name'] = $method.'_'.str_replace('/','_',trim($path,'/') );
+                $id = $config['name'] = $method.'_'.str_replace('/','_',trim($uri,'/') );
             }
             // allow registered response class to override all
             if( isset($this->responses[$id]) ){
@@ -298,6 +326,7 @@ class Swizzle {
                 $data = $this->transformType( $op );
                 $type = $data['type'];
                 // typed array responses require a model wrapper - $ref already validated
+                // passing items into operation will just be ignored
                 if( 'array' === $type && isset($data['items']) ){
                     $ref = $data['items']['$ref'];
                     $type = $ref.'_array';
@@ -569,6 +598,21 @@ class Swizzle {
         }
         return $hash;
     }    
+    
+    
+
+    /**
+     * Utility for merging any URI into a fully qualified one
+     * @param string URI that may be a /path or http://address
+     * @param string full base URL that may or may not be on same domain
+     * @return string
+     */
+    private static function mergeUrl( $uri, $baseUrl ){
+        $href = parse_url($uri);
+        $base = parse_url($baseUrl);
+        $full = $href + $base + parse_url('http://localhost/');
+        return $full['scheme'].'://'.$full['host'].$full['path'];
+    }    
 
     
     
@@ -597,8 +641,7 @@ class Swizzle {
         $source = var_export( $service->toArray(), 1 );
         return "<?php\n".$comment."\nreturn ".$source.";\n"; 
     }    
+
     
 }
-
-
 
