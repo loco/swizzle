@@ -44,7 +44,6 @@ class ModelTest extends GuzzleTestCase {
             'testwrap' => array(
               'uri' => '/testwrap.json',
               'httpMethod' => 'GET',
-              'responseType' => 'model',
               'responseClass' => 'TestModelList',
             ),
             // method returning special typed array with root property

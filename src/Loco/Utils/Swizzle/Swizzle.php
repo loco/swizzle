@@ -197,7 +197,7 @@ class Swizzle {
         }
         // Declared version overrides anything we've set
         if( $version = $listing->getApiVersion() ){
-            $this->debug(' + set apiVersion %s', $version );
+            $this->debug('+ set apiVersion %s', $version );
             $this->setApiVersion( $version );
         }
         // Set description if missing from constructor
@@ -244,18 +244,18 @@ class Swizzle {
     public function addModel( array $model ){
         $name = isset($model['id']) ? $model['id'] : '';
         if( $name ){
-            $this->debug(' + adding model %s ...', $name );
+            $this->debug('+ adding model %s ...', $name );
         }
         else {
             $name = 'anon_'.self::hashArray($model);
-            $this->debug( ' + adding anonymous model: %s ...', $name );
+            $this->debug( '+ adding anonymous model: %s ...', $name );
         }
         $defaults = array (
             'name' => $name,
-            'type' => 'object',
+            'type' => 'object'
         );
         // a model is basically a parameter, but has name property added
-        $data = $this->transformType( $model ) + $defaults;
+        $data = $this->transformSchema( $model ) + $defaults;
         if( 'object' === $data['type'] ){
             $data['additionalProperties'] = false;
         }
@@ -287,7 +287,7 @@ class Swizzle {
         if( 0 === strpos( $uri, $service->getBaseUrl() ) ){
             $uri = preg_replace('!^https?://[^/]+!', '', $uri );
         }
-        $this->debug(' + adding api %s ...', $uri );
+        $this->debug('+ adding api %s ...', $uri );
         
         // no need for full url if relative to current
         // operation keys common to both swagger and guzzle
@@ -323,24 +323,26 @@ class Swizzle {
             }
             // handle response type if defined
             else if( isset($config['responseType']) ){
-                $data = $this->transformType( $op );
+                $data = $this->transformSchema( $op );
                 $type = $data['type'];
                 // typed array responses require a model wrapper - $ref already validated
                 // passing items into operation will just be ignored
                 if( 'array' === $type && isset($data['items']) ){
                     $ref = $data['items']['$ref'];
-                    $type = $ref.'_array';
+                    $this->debug("! no modelling support for root arrays. %s items won't be validated", $ref );
+                    /* $type = $ref.'_array';
                     if( ! $service->getModel($type) ){
                         $model = array(
                             'id' => $type,
                             'type' => 'array',
+                            'paramType' => 'json',
                             'description' => 'Array of "'.$ref.'" objects',
                             'items' => array (
                                 '$ref' => $ref,
                             ),
                         );
                         $this->addModel( $model );
-                    }
+                    }*/
                 } 
                 // Ensure service contructor calls inferResponseType by having class but no type
                 // This will handle Guzzle primatives, models and fall back to class
@@ -392,7 +394,7 @@ class Swizzle {
             if( isset($_param['name']) ){    
                 $name = $_param['name'];
             }
-            $param = $this->transformType( $_param );
+            $param = $this->transformSchema( $_param );
             // location differences 
             if( isset($param['location']) && 'path' === $param['location'] ){
                 $param['location'] = 'uri';
@@ -413,7 +415,7 @@ class Swizzle {
      * @param array Swagger schema
      * @return array Guzzle schema
      */
-    private function transformType( array $source ){
+    private function transformSchema( array $source ){
         // keys common to both swagger and guzzle
         static $common = array (
             'type' => 1,
@@ -456,7 +458,7 @@ class Swizzle {
             // Else define a literal model definition on the fly. 
             // Guzzle will resolve back to literals on output, but it helps us resolve typed arrays and such
             else {
-                //$target['items'] = $this->transformType( $target['items'] );
+                //$target['items'] = $this->transformSchema( $target['items'] );
                 $model = $this->addModel( $target['items'] );
                 $target['items'] = array(
                     '$ref' => $model->getName(),
