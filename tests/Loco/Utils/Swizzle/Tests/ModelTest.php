@@ -22,7 +22,7 @@ class ModelTest extends GuzzleTestCase {
     public function testClientConstruct(){
 
         // Define a service with a test() method
-        $service = ServiceDescription::factory( array(
+        $service = new ServiceDescription( array(
           'name' => 'test-service',
           'operations' => array (
             // method returning single model
@@ -44,7 +44,14 @@ class ModelTest extends GuzzleTestCase {
             'testwrap' => array(
               'uri' => '/testwrap.json',
               'httpMethod' => 'GET',
+              'responseType' => 'model',
               'responseClass' => 'TestModelList',
+            ),
+            // method returning special typed array with root property
+            'testwrapobj' => array(
+              'uri' => '/testwrapobj.json',
+              'httpMethod' => 'GET',
+              'responseClass' => 'TestModelListObject',
             ),
           ),
           'models' => array (
@@ -66,17 +73,34 @@ class ModelTest extends GuzzleTestCase {
             ),
             // define array of typed objects
             'TestModelList' => array(
-                'type' => 'array',
-                'items' => array(
+              'type' => 'array',
+              'location' => 'json',
+              'items' => array(
+                '$ref' => 'TestModel',
+              ),
+            ),
+            // define root object with array property
+            'TestModelListObject' => array(
+              'type' => 'object',
+              'additionalProperties' => false,
+              'properties' => array(
+                'list' => array(
+                  'type' => 'array',
+                  'location' => 'json', // <- critical
+                  'items' => array(
                     '$ref' => 'TestModel',
+                  ),
                 ),
+              ),
             ),
           ),
+          
         ) );
+        
 
         $client = new Client;
         $client->setDescription( $service );
-        
+
         // test models are defined ok
         $op = $service->getOperation('test');
         $this->assertEquals('model', $op->getResponseType() );
@@ -174,12 +198,29 @@ class ModelTest extends GuzzleTestCase {
         // test response is a model
         $this->assertInstanceof('\Guzzle\Service\Resource\Model', $response );
         
-        // test response has 3 items
-        //$this->assertCount( 3, $response ); // <- fails.
-        
         $data = $response->toArray();
-        //$this->assertCount( 3, $data ); // <- also fails
-        
+        $this->assertCount( 3, $data ); // <- fails
+    }
+
+
+
+    /**
+     * Test array of models in response defined with wrapper model containing an array property
+     * @depends testClientConstruct
+     */
+    public function testModelListObjectResponse( Client $client ){        
+        // fake a response with multiple valid objects
+        $plugin = new MockPlugin();
+        $plugin->addResponse( new Response( 200, array(), '{"list":[{"foo":4},{"foo":5},{"foo":6}]}' ) );
+        $client->addSubscriber( $plugin );
+        $response = $client->testwrapobj();
+
+        // test response is a model
+        $this->assertInstanceof('\Guzzle\Service\Resource\Model', $response );
+
+        // test response has 3 items
+        $list = $response->get('list');
+        $this->assertCount( 3, $list );
     }
         
 }
