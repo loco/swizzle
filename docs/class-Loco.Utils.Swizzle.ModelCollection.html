@@ -4,7 +4,7 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<meta name="generator" content="ApiGen 2.8.0" />
 
-	<title>Class Loco\Utils\Swizzle\SwaggerClient | Swizzle</title>
+	<title>Class Loco\Utils\Swizzle\ModelCollection | Swizzle</title>
 
 	<script type="text/javascript" src="resources/combined.js?3001569409"></script>
 	<script type="text/javascript" src="elementlist.js?621651628"></script>
@@ -39,8 +39,8 @@
 		<div id="elements">
 			<h3>Classes</h3>
 			<ul>
-				<li><a href="class-Loco.Utils.Swizzle.ModelCollection.html">ModelCollection</a></li>
-				<li class="active"><a href="class-Loco.Utils.Swizzle.SwaggerClient.html">SwaggerClient</a></li>
+				<li class="active"><a href="class-Loco.Utils.Swizzle.ModelCollection.html">ModelCollection</a></li>
+				<li><a href="class-Loco.Utils.Swizzle.SwaggerClient.html">SwaggerClient</a></li>
 				<li><a href="class-Loco.Utils.Swizzle.Swizzle.html">Swizzle</a></li>
 			</ul>
 
@@ -84,24 +84,24 @@
 	</div>
 
 <div id="content" class="class">
-	<h1>Class SwaggerClient</h1>
+	<h1>Class ModelCollection</h1>
 
 
 	<div class="description">
 	
-<p>Client for pulling Swagger docs</p>
+<p>Sorts models by dependency order</p>
 
 	</div>
 
 	<dl class="tree">
 		<dd style="padding-left:0px">
-Guzzle\Service\Client
+Guzzle\Common\Collection
 			
 			
 		</dd>
 		<dd style="padding-left:30px">
 			<img src="resources/inherit.png" alt="Extended by" />
-<b><span>Loco\Utils\Swizzle\SwaggerClient</span></b>			
+<b><span>Loco\Utils\Swizzle\ModelCollection</span></b>			
 			
 			
 		</dd>
@@ -120,48 +120,44 @@ Guzzle\Service\Client
 		<b>Namespace:</b> <a href="namespace-Loco.html">Loco</a>\<a href="namespace-Loco.Utils.html">Utils</a>\<a href="namespace-Loco.Utils.Swizzle.html">Swizzle</a><br />
 		
 
-		<b>Located at</b> <a href="source-class-Loco.Utils.Swizzle.SwaggerClient.html#9-45" title="Go to source code">Loco/Utils/Swizzle/SwaggerClient.php</a><br />
+		<b>Located at</b> <a href="source-class-Loco.Utils.Swizzle.ModelCollection.html#6-65" title="Go to source code">Loco/Utils/Swizzle/ModelCollection.php</a><br />
 	</div>
 
 
 
 	<table class="summary" id="methods">
 	<caption>Methods summary</caption>
-	<tr data-order="factory" id="_factory">
+	<tr data-order="__construct" id="___construct">
 
 		<td class="attributes"><code>
-			 public static
-			<code><a href="class-Loco.Utils.Swizzle.SwaggerClient.html">Loco\Utils\Swizzle\SwaggerClient</a></code>
+			 public 
+			
 			
 			</code>
 		</td>
 
 		<td class="name"><div>
-		<a class="anchor" href="#_factory">#</a>
-		<code><a href="source-class-Loco.Utils.Swizzle.SwaggerClient.html#18-43" title="Go to source code">factory</a>( <span>array|Guzzle\Common\Collection <var>$config</var> = <span class="php-keyword1">array</span>() </span> )</code>
+		<a class="anchor" href="#___construct">#</a>
+		<code><a href="source-class-Loco.Utils.Swizzle.ModelCollection.html#11-23" title="Go to source code">__construct</a>( <span>array <var>$data</var> = <span class="php-keyword1">array</span>() </span> )</code>
 
 		<div class="description short">
 			
-<p>Factory method to create a new Swagger Docs client.</p>
+<p>Construct collection from models indexed by name</p>
 
 		</div>
 
 		<div class="description detailed hidden">
 			
-<p>Factory method to create a new Swagger Docs client.</p>
+<p>Construct collection from models indexed by name</p>
 
 
 
 				<h4>Parameters</h4>
 				<div class="list"><dl>
-					<dt><var>$config</var></dt>
-					<dd><code>array|Guzzle\Common\Collection</code><br>$config Configuration data</dd>
+					<dt><var>$data</var></dt>
+					<dd><code>array</code><br>$data Associative array of data to set</dd>
 				</dl></div>
 
-				<h4>Returns</h4>
-				<div class="list">
-					<code><code><a href="class-Loco.Utils.Swizzle.SwaggerClient.html">Loco\Utils\Swizzle\SwaggerClient</a></code></code><br />
-				</div>
 
 
 

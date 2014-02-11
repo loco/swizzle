@@ -3,10 +3,14 @@ namespace Loco\Utils\Swizzle;
 
 use Guzzle\Common\Collection;
 
+/**
+ * Sorts models by dependency order
+ */
 class ModelCollection extends Collection {
     
     /**
-     * 
+     * Construct collection from models indexed by name
+     * @param array $data Associative array of data to set
      */
     public function __construct( array $data = array() ){
         foreach( $data as $id => $model ){
@@ -20,7 +24,9 @@ class ModelCollection extends Collection {
     
     
     
-    
+    /**
+     * @internal
+     */
     private function onDependencySort( array $a, array $b ){
         // check if B depends on A
         $deps = self::collectRefs( $b );
@@ -40,7 +46,8 @@ class ModelCollection extends Collection {
     
     
     /**
-     * Collect all models that a model references
+     * @ignore 
+     * Collect all models that a model references.
      */
     public static function collectRefs( array $model, array $refs = array() ){
         foreach( $model as $key => $val ){
