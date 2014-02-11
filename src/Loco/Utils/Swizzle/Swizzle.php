@@ -123,6 +123,7 @@ class Swizzle {
     /**
      * Set base URL
      * @param string base url common to all api calls
+     * @return string 
      */
     public function setBaseUrl( $baseUrl ){
         return $this->setInitValue( 'baseUrl', $baseUrl );
@@ -274,6 +275,7 @@ class Swizzle {
      * Add a Swagger Api declaration which may consist of multiple operations
      * @param array consisting of path, description and array of operations
      * @param string URL inferring the base location for api path
+     * @throws \Exception
      * @return Swizzle
      */    
     public function addApi( array $api, $baseUrl = '' ){
