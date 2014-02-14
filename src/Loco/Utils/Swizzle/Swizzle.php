@@ -44,10 +44,16 @@ class Swizzle {
     private $service;    
     
     /**
-     * Registry of custom classes, mapped by method command name
+     * Registry of custom reponse classes, mapped by method command name
      * @var array
      */    
-    private $responses = array();
+    private $responseClasses = array();
+    
+    /**
+     * Registry of custom operation command classes, mapped by method command name
+     * @var array
+     */    
+    private $commandClasses = array();
     
     /**
      * Delay between HTTP requests in microseconds
@@ -162,11 +168,34 @@ class Swizzle {
      * @return Swizzle
      */
     public function registerResponseClass( $name, $class ){
-        $this->responses[$name] = $class;
+        $this->responseClasses[$name] = $class;
         // set retrospectively if method already encountered
         if( $this->service ){
             $op = $this->service->getOperation($name) and
             $op->setResponseClass( $class );
+        }
+        return $this;
+    }     
+    
+    
+    /**
+     * Apply a bespoke operation command class to a given method, or all methods
+     * @param string name of command using this class, or "" for all.
+     * @param string full class name for operation class field
+     * @return Swizzle
+     * @throws \Exception
+     */
+    public function registerCommandClass( $name, $class ){
+        $this->commandClasses[$name] = $class;
+        // set retrospectively if method already encountered
+        if( $this->service ){
+            if( $name ){
+                $op = $this->service->getOperation($name) and
+                $op->setClass( $class );
+            }
+            else {
+                throw new \Exception('Too late to register a global command class');
+            }
         }
         return $this;
     }    
@@ -318,10 +347,19 @@ class Swizzle {
                 $method = strtolower( $config['httpMethod'] );
                 $id = $config['name'] = $method.'_'.str_replace('/','_',trim($uri,'/') );
             }
-            // allow registered response class to override all
-            if( isset($this->responses[$id]) ){
+            
+            // allow custom command class, or global class for all commands
+            if( isset($this->commandClasses[$id]) ){
+                $config['class'] = $this->commandClasses[$id];
+            }
+            else if( isset($this->commandClasses['']) ){
+                $config['class'] = $this->commandClasses[''];
+            }
+
+            // allow registered response class to override all response type logic
+            if( isset($this->responseClasses[$id]) ){
                 $config['responseType'] = 'class';
-                $config['responseClass'] = $this->responses[$id];
+                $config['responseClass'] = $this->responseClasses[$id];
             }
             // handle response type if defined
             else if( isset($config['responseType']) ){
@@ -382,7 +420,7 @@ class Swizzle {
             // Sanitize custom response class because Guzzle doesn't know it doesn't exist yet
             if( Operation::TYPE_CLASS === $operation->getResponseType() ){
                 $class = $operation->getResponseClass();
-                if( empty($this->responses[$id]) || $class !== $this->responses[$id] ){
+                if( empty($this->responseClasses[$id]) || $class !== $this->responseClasses[$id] ){
                     throw new \Exception('responseType defaulted to class "'.$class.'" but class not registered');
                 }
             }
