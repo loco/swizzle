@@ -24,6 +24,7 @@ class PetstoreTest extends \PHPUnit_Framework_TestCase {
     public function testServiceBuild(){
         $builder = new Swizzle( 'pets', 'Swagger Pet store' );
         //$builder->verbose( STDERR );
+        $builder->registerCommandClass( '', '\\Loco\\Utils\\Swizzle\\Command\\StrictCommand' );
         $builder->setBaseUrl('http://petstore.swagger.wordnik.com/api');
         $builder->build('http://petstore.swagger.wordnik.com/api/api-docs');
         //die( $builder->toJson() );
@@ -75,10 +76,9 @@ class PetstoreTest extends \PHPUnit_Framework_TestCase {
      */
     public function testGetPetById( Client $client, $petId ){
         $pet = $client->getPetById( compact('petId') );
-        //$this->assertInstanceOf('\Guzzle\Service\Resource\Model', $pet );
-        //$this->assertEquals( $petId, $pet['id'] );
+        $this->assertInstanceOf('\Guzzle\Service\Resource\Model', $pet );
+        $this->assertEquals( $petId, $pet['id'] );
     }
-    
     
     
 }

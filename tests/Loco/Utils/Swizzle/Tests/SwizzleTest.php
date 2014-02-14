@@ -15,7 +15,7 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
     /**
      * @return Swizzle
      */
-    public function testInitializeModel(){
+    public function testServiceConstruct(){
         $builder = new Swizzle( 'test', 'A test API', '1.0' );
         $descr = $builder->getServiceDescription();
         $this->assertEquals('test', $descr->getName() );
@@ -27,7 +27,7 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
     
     /**
      * Test adding of a model
-     * @depends testInitializeModel
+     * @depends testServiceConstruct
      * @return Swizzle
      */    
     public function testModelAddition( Swizzle $builder ){
@@ -51,6 +51,35 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
         $this->assertEquals( 'string', $foo->getProperty('bar')->getType() );
         return $builder;
     }
+
+
+    
+    
+    
+    /**
+     * Test a property can inherit an existing model by reference
+     * @depends testServiceConstruct
+     */
+    public function testModelResolvesReference( Swizzle $builder ){
+        $child = array (
+            'id' => 'barType',
+            'type' => 'object',
+        );
+        $parent = array (
+            'id' => 'bazType',
+            'type' => 'object',
+            'properties' => array (
+                'bar' => array(
+                    '$ref' => 'barType',
+                ),
+            ),
+        );
+        $builder->addModel( $child );
+        $builder->addModel( $parent );
+        $descr = $builder->getServiceDescription();
+        $baz = $descr->getModel('bazType');
+        $this->assertEquals( 'object', $baz->getProperty('bar')->getType() );
+    }    
     
     
     
@@ -207,7 +236,7 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
     
     /**
      * Test an operation that responds with an array of primatives
-     * @depends testInitializeModel
+     * @depends testServiceConstruct
      */
     public function testDynamicArrayResponse( Swizzle $builder ){
         $api = array (
@@ -238,7 +267,7 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
 
     /**
      * Test failure when response type falls back to an unregistered class
-     * @depends testInitializeModel
+     * @depends testServiceConstruct
      * @expectedException \Exception
      */
     public function testUnregisteredResponseClassFails( Swizzle $builder ){

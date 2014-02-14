@@ -30,12 +30,14 @@ class ModelTest extends GuzzleTestCase {
               'uri' => '/test.json',
               'httpMethod' => 'GET',
               'responseClass' => 'TestModel',
+              'class' => '\\Loco\\Utils\\Swizzle\\Command\\StrictCommand',
             ),
             // method returning array of models
             'testlist' => array(
               'uri' => '/testlist.json',
               'httpMethod' => 'GET',
               'responseClass' => 'array',
+              'class' => '\\Loco\\Utils\\Swizzle\\Command\\StrictCommand',
               'items' => array(
                 '$ref' => 'TestModel',
               ),
@@ -45,12 +47,14 @@ class ModelTest extends GuzzleTestCase {
               'uri' => '/testwrap.json',
               'httpMethod' => 'GET',
               'responseClass' => 'TestModelList',
+              'class' => '\\Loco\\Utils\\Swizzle\\Command\\StrictCommand',
             ),
             // method returning special typed array with root property
             'testwrapobj' => array(
               'uri' => '/testwrapobj.json',
               'httpMethod' => 'GET',
               'responseClass' => 'TestModelListObject',
+              'class' => '\\Loco\\Utils\\Swizzle\\Command\\StrictCommand',
             ),
           ),
           'models' => array (
@@ -62,11 +66,13 @@ class ModelTest extends GuzzleTestCase {
                 'foo' => array (
                   'type' => 'integer',
                   'location' => 'json',
+                  'required' => true,
                 ),
                 // property that won't exist in response
                 'bar' => array (
                   'type' => 'integer',
                   'location' => 'json',
+                  'required' => false,
                 ),
               ),
             ),
@@ -135,22 +141,31 @@ class ModelTest extends GuzzleTestCase {
      * Test single model response
      * @depends testClientConstruct
      */
-    public function testModelResponse( Client $client ){        
-        // fake a response with valid "foo" and invalid "baz" properties
+    public function testModelResponseValidates( Client $client ){        
+        // fake a response with valid "foo" and legally missing "bar" property
         $plugin = new MockPlugin();
-        $plugin->addResponse( new Response( 200, array(), '{"foo":1,"baz":"nan"}' ) );
+        $plugin->addResponse( new Response( 200, array(), '{"foo":1}' ) );
         $client->addSubscriber( $plugin );
         $response = $client->test();
-
         // test value of "foo" key, which will exist
         $this->assertEquals( 1, $response->get('foo') );
-
         // test value of "bar" key which isn't in response
-        // Why doesn't the model complain this is missing in response?
-        $this->assertEquals( null, $response->get('bar') );        -
+        $this->assertEquals( null, $response->get('bar') );
+    }
 
-        // test value of "baz" key, which should be absent from the model
-        $this->assertNull( $response->get('baz') );
+
+
+    /**
+     * Test single model response that fails validation
+     * @depends testClientConstruct
+     * @expectedException \Guzzle\Service\Exception\ValidationException
+     */
+    public function testModelResponseFailure( Client $client ){        
+        // fake a response with missing required property and extra invalid one
+        $plugin = new MockPlugin();
+        $plugin->addResponse( new Response( 200, array(), '{"baz":1}' ) );
+        $client->addSubscriber( $plugin );
+        $response = $client->test();
     }
 
 

@@ -487,6 +487,13 @@ class Swizzle {
      * @return array Guzzle schema
      */
     private function transformSchema( array $source ){
+        // validate refs now, but Guzzle will resolve later
+        if( isset($source['$ref']) ){
+            if( ! $this->getServiceDescription()->getModel($source['$ref']) ){
+                throw new \Exception('Encountered $ref to "'.$source['$ref'].'" but model not registered');
+            }
+            return $source;
+        }
         // keys common to both swagger and guzzle
         static $common = array (
             'type' => 1,
