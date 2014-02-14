@@ -7,6 +7,7 @@ use Guzzle\Service\Description\ServiceDescription;
 
 /**
  * Tests Swizzle
+ * @group transform
  */
 class SwizzleTest extends \PHPUnit_Framework_TestCase {
     
@@ -142,6 +143,35 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
         $op = $descr->getOperation('get_test_type');
         $this->assertEquals( 'model', $op->getResponseType() );
         $this->assertEquals( 'fooType', $op->getResponseClass() );
+    }
+    
+
+    
+    /**
+     * Test an operation that responds with a root object literal
+     * @depends testOperationAddition
+     */
+    public function testObjectLiteralTranformsToModel( Swizzle $builder ){
+        // mock a Swagger API op that returns a root type that is defined inline
+        $api = array (
+            'path' => '/test/type_literal',
+            'operations' => array (
+                array (
+                    'type' => 'object',
+                    'properties' => array (
+                        'ok' => array (
+                            'type' => 'boolean',
+                            'defaultValue' => true,
+                        ),
+                    ),
+                ),
+            ),
+        );
+        $builder->addApi( $api );
+        $descr = $builder->getServiceDescription();    
+        $op = $descr->getOperation('get_test_type_literal');
+        $this->assertEquals( 'model', $op->getResponseType() );
+        $this->assertStringStartsWith( 'anon_', $op->getResponseClass() );
     }
     
 

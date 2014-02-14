@@ -325,32 +325,40 @@ class Swizzle {
             }
             // handle response type if defined
             else if( isset($config['responseType']) ){
-                $data = $this->transformSchema( $op );
-                $type = $data['type'];
-                // typed array responses require a model wrapper - $ref already validated
-                // passing items into operation will just be ignored
-                if( 'array' === $type && isset($data['items']) ){
-                    $ref = $data['items']['$ref'];
-                    $this->debug("! no modelling support for root arrays. %s items won't be validated", $ref );
-                    /* $type = $ref.'_array';
-                    if( ! $service->getModel($type) ){
-                        $model = array(
-                            'id' => $type,
-                            'type' => 'array',
-                            'paramType' => 'json',
-                            'description' => 'Array of "'.$ref.'" objects',
-                            'items' => array (
-                                '$ref' => $ref,
-                            ),
-                        );
-                        $this->addModel( $model );
-                    }*/
+
+                // Check for primitive values first
+                $type = $this->transformSimpleType( $config['responseType'] ) or
+                $type = $config['responseType'];
+
+                // Array primitive may be typed with 'items' spec, but Guzzle operation ignores at top level
+                if( 'array' === $type ){
+                    if( isset($op['items']) ){
+                        $this->debug("! no modelling support for root arrays. items won't be validated" );
+                    }
                 } 
+                // Root objects must be declared as models in Guzzle. 
+                // i.e "object" is not a valid primitive for responseClass
+                else if( 'object' === $type ){
+                    $model = $this->addModel( $op );
+                    $type = $model->getName();
+                }
+                // allowed responseClass primitives are 'array', 'boolean', 'string', 'integer' and ''
+                // That leaves just "number" and "null" as unsupported from the core 7 types in json schema.
+                else if ( 'number' === $type ){
+                    $this->debug('! number type defaulted to string as responseClass');
+                    $type = 'string';
+                }
+                else if( 'null' === $type ){
+                    $this->debug('! empty type defaulted to empty responseClass ');
+                    $type = '';
+                }
+                
                 // Ensure service contructor calls inferResponseType by having class but no type
                 // This will handle Guzzle primatives, models and fall back to class
                 $config['responseClass'] = $type;
                 unset( $config['responseType'] );
             }
+
             // handle parameters
             if( isset($op['parameters']) ){
                 $template = array( 'location' => 'query' );
@@ -359,6 +367,7 @@ class Swizzle {
             else {
                 $config['parameters'] = array();
             }
+
             // handle responseMessages -> errorResponses
             if( isset($op['responseMessages']) ){
                 $config['errorResponses'] = $this->transformResponseMessages($op['responseMessages']);
@@ -366,16 +375,14 @@ class Swizzle {
             else {
                 $config['errorResponses'] = array();
             }
+
             // @todo how to deny additional parameters in command calls?
             // $config['additionalParameters'] = false;
             $operation = new Operation( $config, $service );
             // Sanitize custom response class because Guzzle doesn't know it doesn't exist yet
             if( Operation::TYPE_CLASS === $operation->getResponseType() ){
                 $class = $operation->getResponseClass();
-                if( class_exists($class) ){
-                    // assume native PHP class, such as \DateTime.
-                }
-                else if( empty($this->responses[$id]) || $class !== $this->responses[$id] ){
+                if( empty($this->responses[$id]) || $class !== $this->responses[$id] ){
                     throw new \Exception('responseType defaulted to class "'.$class.'" but class not registered');
                 }
             }
@@ -424,28 +431,18 @@ class Swizzle {
             'enum' => 1,
             'items' => 1,
             'required' => 1,
+            'properties' => 1,
             'description' => 1,
         );
         static $trans = array (
             'paramType' => 'location',
             'defaultValue' => 'default',
         );
+
         // initial translation
         $target = $this->transformArray( $source, $common, $trans );
+        $type = '';
         
-        // transform type if defined
-        if( isset($target['type']) ){
-            $format = isset($source['format']) ? $source['format'] : '';
-            $type = $target['type'] = $this->transformPrimative( $target['type'], $format );
-        }
-        // else fall back to most likely intention
-        else if( isset($source['properties']) ){
-            $type = $target['type'] = 'object';
-        }
-        else {
-            $type = $target['type'] = 'string';
-        }
-
         // handle array of types entities
         if( isset($target['items']) ){
             $type = $target['type'] = 'array';
@@ -470,6 +467,7 @@ class Swizzle {
 
         // handle object properties
         if( isset($source['properties']) ){
+            $type = $target['type'] = 'object';
             $template = array( 'location' => 'json' );
             $target['properties'] = $this->transformParams( $source['properties'], $template );
             // required params are an external array in Swagger, but applied individually as boolean in Guzzle
@@ -481,55 +479,60 @@ class Swizzle {
                 }
             }
         }
-        else if( 'object' === $type ) {
-            $target['properties'] = array();
+        
+        // else handle as primitive type
+        if( ! $type ){
+            $type = isset($source['type']) ? $source['type'] : '';
+            $frmt = isset($source['format']) ? $source['format'] : '';
+            $type = $target['type'] = $this->transformSimpleType( $type, $frmt );
+            // else fall back to a sensible default
+            if( ! $type ){
+                if( isset($source['properties']) ){
+                    $type = $target['type'] = 'object';
+                }
+                else {
+                    $type = $target['type'] = 'string';
+                }
+            }
         }
+        
         return $target;
     }
     
     
     
     /**
-     * Transform various primative aliases that Swagger uses
-     * @see https://github.com/wordnik/swagger-core/wiki/Datatypes
-     * @param string swagger primative as per JSON-Schema Draft 4. [integer|number|string|boolean]
-     * @param string swagger disambiguator, e.g. date when string is a date
-     * @return string Guzzle primative
+     * Transform Swagger simple type to valid JSON Schema type. (which it should be anyway).
+     * @see http://tools.ietf.org/id/draft-zyp-json-schema-04.html#rfc.section.3.5
+     * @param string type specified in swagger field
+     * @param optional format specified in format field
+     * @return string one of array boolean integer number null object string
      */
-    private function transformPrimative( $type, $format = '' ){
+    private function transformSimpleType( $type, $format = '' ){
         static $aliases = array (
-            // empties
-            'void' => '',
-            'null' => '',
-            // integers
-            'integer' => 'integer',
-            'int32'   => 'integer',
-            'int64'   => 'integer',
-            // floats
+            '' => 'null',
+            'null' => 'null',
+            'void' => 'null',
             'number' => 'number',
+            'numeric' => 'number',
+            'float' => 'number',
             'double' => 'number',
-            'float'  => 'number',
-            // dates
-            'date'      => 'date',
-            'dateTime'  => 'date',
-            'date-time' => 'date',
+            'int' => 'integer',
+            'int32' => 'integer',
+            'int64' => 'integer',
+            'integer' => 'integer',
+            'bool' => 'boolean',
+            'boolean' => 'boolean',
+            'array' => 'array',
+            'object' => 'object',
+            'string' => 'string',
+            'byte' => 'string',
+            'date' => 'string',
+            'date-time' => 'string',
         );        
-        if( $format ){
-            $format = isset($aliases[$format]) ? $aliases[$format] : $format;
-            if( 'date' === $format ){
-                return '\\DateTime'; // <- ?
-            }
-        }
-        $type = isset($aliases[$type]) ? $aliases[$type] : $type;
-        // @todo how to handle floats?
-        if( 'number' === $type ){
-            return 'string'; // <- ?
-        }
-        // Swagger permits "void" as a responseType
-        // Guzzle has no real notion of an empty response and defaults to array
-        // That means at least a json string containing "[]" which isn't true of an empty response
-        if( ! $type ){
-            return 'string';
+        $type = isset($aliases[$type]) ? $aliases[$type] : '';
+        if( ! $type && $format ){
+            $type = isset($aliases[$format]) ? $aliases[$format] : '';
         }
         return $type;
     }    
