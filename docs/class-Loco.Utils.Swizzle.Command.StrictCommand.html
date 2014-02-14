@@ -4,7 +4,7 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<meta name="generator" content="ApiGen 2.8.0" />
 
-	<title>Class Loco\Utils\Swizzle\SwaggerClient | Swizzle</title>
+	<title>Class Loco\Utils\Swizzle\Command\StrictCommand | Swizzle</title>
 
 	<script type="text/javascript" src="resources/combined.js?3001569409"></script>
 	<script type="text/javascript" src="elementlist.js?1882751677"></script>
@@ -27,7 +27,7 @@
 						<ul>
 				<li class="active main"><a href="namespace-Loco.Utils.Swizzle.html">Swizzle<span></span></a>
 						<ul>
-				<li class="main"><a href="namespace-Loco.Utils.Swizzle.Command.html">Command</a>
+				<li class="active main"><a href="namespace-Loco.Utils.Swizzle.Command.html">Command</a>
 						</li>
 				<li class="main"><a href="namespace-Loco.Utils.Swizzle.Response.html">Response</a>
 						</li>
@@ -41,9 +41,8 @@
 		<div id="elements">
 			<h3>Classes</h3>
 			<ul>
-				<li><a href="class-Loco.Utils.Swizzle.ModelCollection.html">ModelCollection</a></li>
-				<li class="active"><a href="class-Loco.Utils.Swizzle.SwaggerClient.html">SwaggerClient</a></li>
-				<li><a href="class-Loco.Utils.Swizzle.Swizzle.html">Swizzle</a></li>
+				<li class="active"><a href="class-Loco.Utils.Swizzle.Command.StrictCommand.html">StrictCommand</a></li>
+				<li><a href="class-Loco.Utils.Swizzle.Command.StrictResponseParser.html">StrictResponseParser</a></li>
 			</ul>
 
 
@@ -71,7 +70,7 @@
 				<a href="index.html" title="Overview"><span>Overview</span></a>
 			</li>
 			<li>
-				<a href="namespace-Loco.Utils.Swizzle.html" title="Summary of Loco\Utils\Swizzle"><span>Namespace</span></a>
+				<a href="namespace-Loco.Utils.Swizzle.Command.html" title="Summary of Loco\Utils\Swizzle\Command"><span>Namespace</span></a>
 			</li>
 			<li class="active">
 <span>Class</span>			</li>
@@ -86,24 +85,24 @@
 	</div>
 
 <div id="content" class="class">
-	<h1>Class SwaggerClient</h1>
+	<h1>Class StrictCommand</h1>
 
 
 	<div class="description">
 	
-<p>Client for pulling Swagger docs</p>
+<p>Operation command that validates response models.</p>
 
 	</div>
 
 	<dl class="tree">
 		<dd style="padding-left:0px">
-Guzzle\Service\Client
+Guzzle\Service\Command\OperationCommand
 			
 			
 		</dd>
 		<dd style="padding-left:30px">
 			<img src="resources/inherit.png" alt="Extended by" />
-<b><span>Loco\Utils\Swizzle\SwaggerClient</span></b>			
+<b><span>Loco\Utils\Swizzle\Command\StrictCommand</span></b>			
 			
 			
 		</dd>
@@ -119,53 +118,91 @@ Guzzle\Service\Client
 	<div class="info">
 		
 		
-		<b>Namespace:</b> <a href="namespace-Loco.html">Loco</a>\<a href="namespace-Loco.Utils.html">Utils</a>\<a href="namespace-Loco.Utils.Swizzle.html">Swizzle</a><br />
+		<b>Namespace:</b> <a href="namespace-Loco.html">Loco</a>\<a href="namespace-Loco.Utils.html">Utils</a>\<a href="namespace-Loco.Utils.Swizzle.html">Swizzle</a>\<a href="namespace-Loco.Utils.Swizzle.Command.html">Command</a><br />
 		
 
-		<b>Located at</b> <a href="source-class-Loco.Utils.Swizzle.SwaggerClient.html#9-45" title="Go to source code">Loco/Utils/Swizzle/SwaggerClient.php</a><br />
+		<b>Located at</b> <a href="source-class-Loco.Utils.Swizzle.Command.StrictCommand.html#12-67" title="Go to source code">Loco/Utils/Swizzle/Command/StrictCommand.php</a><br />
 	</div>
 
 
 
 	<table class="summary" id="methods">
 	<caption>Methods summary</caption>
-	<tr data-order="factory" id="_factory">
+	<tr data-order="process" id="_process">
 
 		<td class="attributes"><code>
-			 public static
-			<code><a href="class-Loco.Utils.Swizzle.SwaggerClient.html">Loco\Utils\Swizzle\SwaggerClient</a></code>
+			 protected 
+			
 			
 			</code>
 		</td>
 
 		<td class="name"><div>
-		<a class="anchor" href="#_factory">#</a>
-		<code><a href="source-class-Loco.Utils.Swizzle.SwaggerClient.html#18-43" title="Go to source code">factory</a>( <span>array|Guzzle\Common\Collection <var>$config</var> = <span class="php-keyword1">array</span>() </span> )</code>
+		<a class="anchor" href="#_process">#</a>
+		<code><a href="source-class-Loco.Utils.Swizzle.Command.StrictCommand.html#18-48" title="Go to source code">process</a>( )</code>
 
 		<div class="description short">
 			
-<p>Factory method to create a new Swagger Docs client.</p>
+<p>Validate response model after processing</p>
 
 		</div>
 
 		<div class="description detailed hidden">
 			
-<p>Factory method to create a new Swagger Docs client.</p>
+<p>Validate response model after processing</p>
 
 
 
-				<h4>Parameters</h4>
-				<div class="list"><dl>
-					<dt><var>$config</var></dt>
-					<dd><code>array|Guzzle\Common\Collection</code><br>$config Configuration data</dd>
-				</dl></div>
 
-				<h4>Returns</h4>
+
+				<h4>Throws</h4>
 				<div class="list">
-					<code><code><a href="class-Loco.Utils.Swizzle.SwaggerClient.html">Loco\Utils\Swizzle\SwaggerClient</a></code></code><br />
+					<code>Guzzle\Service\Exception\ValidationException</code><br />
+				</div>
+
+				<h4>Override</h4>
+				<div class="list">
 				</div>
 
 
+		</div>
+		</div></td>
+	</tr>
+	<tr data-order="getResponseParser" id="_getResponseParser">
+
+		<td class="attributes"><code>
+			 public 
+			ResponseParserInterface
+			
+			</code>
+		</td>
+
+		<td class="name"><div>
+		<a class="anchor" href="#_getResponseParser">#</a>
+		<code><a href="source-class-Loco.Utils.Swizzle.Command.StrictCommand.html#52-63" title="Go to source code">getResponseParser</a>( )</code>
+
+		<div class="description short">
+			
+<p>Get the overridden response parser used for the schema-aware operation</p>
+
+		</div>
+
+		<div class="description detailed hidden">
+			
+<p>Get the overridden response parser used for the schema-aware operation</p>
+
+
+
+
+				<h4>Returns</h4>
+				<div class="list">
+					<code>ResponseParserInterface</code><br />
+				</div>
+
+
+				<h4>Override</h4>
+				<div class="list">
+				</div>
 
 
 		</div>

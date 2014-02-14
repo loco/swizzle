@@ -10,10 +10,14 @@ use Guzzle\Service\Command\LocationVisitor\VisitorFlyweight;
  */
 class StrictResponseParser extends OperationResponseParser {
 
-    /** @var StrictResponseParser */
+    /** 
+     * Singleton
+     * @var StrictResponseParser
+     */
     protected static $instance;
     
     /**
+     * Get singleton
      * @return StrictResponseParser
      */
     public static function getInstance(){

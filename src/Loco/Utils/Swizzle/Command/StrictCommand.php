@@ -16,8 +16,9 @@ class StrictCommand extends OperationCommand {
     
     
     /**
-     * @override
      * Validate response model after processing
+     * @throws ValidationException
+     * @override
      */
     protected function process(){
         parent::process();
@@ -49,8 +50,8 @@ class StrictCommand extends OperationCommand {
     
     
     /**
-     * @override
      * Get the overridden response parser used for the schema-aware operation
+     * @override
      * @return ResponseParserInterface
      */
     public function getResponseParser(){
