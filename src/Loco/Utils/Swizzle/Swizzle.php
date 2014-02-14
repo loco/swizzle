@@ -454,10 +454,17 @@ class Swizzle {
             'type' => 1,
             'enum' => 1,
             'items' => 1,
+            'format' => 1,
+            'minimum' => 1,
+            'maximum' => 1,
             'required' => 1,
+            'minLength' => 1,
+            'maxLength' => 1,
             'properties' => 1,
             'description' => 1,
+            
         );
+        // keys requiring translation
         static $trans = array (
             'defaultValue' => 'default',
         );
@@ -509,8 +516,8 @@ class Swizzle {
         
         // else handle as primitive type
         if( ! $type ){
-            $type = isset($source['type']) ? $source['type'] : '';
-            $frmt = isset($source['format']) ? $source['format'] : '';
+            $type = isset($target['type']) ? $target['type'] : '';
+            $frmt = isset($target['format']) ? $target['format'] : '';
             $type = $target['type'] = $this->transformSimpleType( $type, $frmt );
             // else fall back to a sensible default
             if( ! $type ){
@@ -521,6 +528,11 @@ class Swizzle {
                     $type = $target['type'] = 'string';
                 }
             }
+        }
+
+        // Guzzle and swagger have minimal format overlap
+        if( isset($target['format']) ){
+            $target['format'] = $this->transformTypeFormat( $target['format'] );
         }
         
         return $target;
@@ -562,6 +574,22 @@ class Swizzle {
             $type = isset($aliases[$format]) ? $aliases[$format] : '';
         }
         return $type;
+    }    
+    
+    
+    
+    /**
+     * Transform Swagger's datatype format hinting to Guzzle's
+     * @param string Swagger's format field
+     * @return string one of "date-time", "date" or ""
+     */
+    private function transformTypeFormat( $format ){
+        static $aliases = array(
+            'date' => 'date',
+            'date-time' => 'date-time',
+        );
+        // Guzzle supports also time, timestamp, date-time-http but Swagger has no equivalent
+        return isset($aliases[$format]) ? $aliases[$format] : '';
     }    
 
 
