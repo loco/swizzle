@@ -333,7 +333,7 @@ class Swizzle {
                 // Array primitive may be typed with 'items' spec, but Guzzle operation ignores at top level
                 if( 'array' === $type ){
                     if( isset($op['items']) ){
-                        $this->debug("! no modelling support for root arrays. items won't be validated" );
+                        $this->debug("! no modelling support for root arrays. Item types won't be validated" );
                     }
                 } 
                 // Root objects must be declared as models in Guzzle. 
@@ -349,7 +349,7 @@ class Swizzle {
                     $type = 'string';
                 }
                 else if( 'null' === $type ){
-                    $this->debug('! empty type defaulted to empty responseClass ');
+                    $this->debug('! empty type "%s" defaulted to empty responseClass', $config['responseType'] );
                     $type = '';
                 }
                 
@@ -405,16 +405,40 @@ class Swizzle {
             }
             $param = $this->transformSchema( $_param );
             // location differences 
-            if( isset($param['location']) && 'path' === $param['location'] ){
-                $param['location'] = 'uri';
+            if( isset($_param['paramType']) ){
+                $param['location'] = $this->transformLocation( $_param['paramType'] );
                 // swagger doesn't allow optional path params
                 if( ! isset($param['required']) ){
-                    $param['required'] = true;
+                    $param['required'] = 'uri' === $param['location'];
                 }
             }
             $target[$name] = $param + $defaults;
         }        
         return $target;
+    }
+
+
+
+    /**
+     * Transform a Swagger request paramType to a Guzzle location.
+     * Note that Guzzle has response locations too.
+     * @param string Swagger paramType field (path|query|body|header|form)
+     * @return string Guzzle location field (uri|query|body|header|postField|$default)
+     */
+    private function transformLocation( $paramType ){
+        // request param: (statusCode|reasonPhrase|header|body|json|xml)
+        // response property: (uri|query|header|body|postField|postFile|json|xml|responseBody)
+        static $aliases = array(
+            'body' => 'body',
+            'path' => 'uri',
+            'query' => 'query',
+            'header' => 'header',
+            'form' => 'postField',
+            // 1:1 mappings if swagger response location passes through
+            'json' => 'json',
+        );
+        // return alias, defaulting to query
+        return isset($aliases[$paramType]) ? $aliases[$paramType] : '';
     }
 
 
@@ -435,7 +459,6 @@ class Swizzle {
             'description' => 1,
         );
         static $trans = array (
-            'paramType' => 'location',
             'defaultValue' => 'default',
         );
 
@@ -468,8 +491,12 @@ class Swizzle {
         // handle object properties
         if( isset($source['properties']) ){
             $type = $target['type'] = 'object';
-            $template = array( 'location' => 'json' );
-            $target['properties'] = $this->transformParams( $source['properties'], $template );
+            // default location for response properties is JSON
+            // Note that swagger only supports locations in request parameters
+            $defaults = array ( 
+                'location' => 'json',
+            );
+            $target['properties'] = $this->transformParams( $source['properties'], $defaults );
             // required params are an external array in Swagger, but applied individually as boolean in Guzzle
             if( isset($source['required']) ){
                 foreach( $source['required'] as $prop ){

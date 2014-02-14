@@ -6,7 +6,7 @@
  */
 
 // All we need is the Swizzle class.
-require __DIR__.'/vendor/autoload.php';
+require __DIR__.'/../vendor/autoload.php';
 use Loco\Utils\Swizzle\Swizzle;
 
 // Intialize service with name and description
@@ -23,9 +23,5 @@ $builder->registerResponseClass('exportArchive', '\Loco\Http\Response\ZipRespons
 // This must be a Valid Swagger JSON resource listing.
 $builder->build('https://localise.biz/api/docs');        
 
-
-// export service description to JSON:
-echo $builder->toJson();
-
 // export service description to PHP source:
-//echo $builder->export();
+echo $builder->export();
