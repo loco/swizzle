@@ -10,41 +10,36 @@ class ModelCollection extends Collection {
     
     /**
      * Construct collection from models indexed by name
-     * @param array $data Associative array of data to set
+     * @param array $models Associative array of data to set
      */
-    public function __construct( array $data = array() ){
-        foreach( $data as $id => $model ){
+    public function __construct( array $models = array() ){
+        parent::__construct();
+        // build dependency graph and add missing id properties
+        $graph = array();
+        foreach( $models as $id => $model ){
             if( ! isset($model['id']) ){
-                $data[$id]['id'] = $id;
+                $models[$id]['id'] = $id;
+            }
+            $graph[$id] = self::collectRefs($model);
+        }
+        // Add items with no dependencies until no items have dependencies left
+        while( $models ){
+            foreach( array_keys($models) as $id ){
+                if( empty($graph[$id]) ){
+                    // add item with no dependencies to collection
+                    $this->set( $id, $models[$id] );
+                    unset( $models[$id] );
+                    // remove added item from dependency list of others
+                    foreach( $graph as $ref => $references ){
+                        unset($graph[$ref][$id]);
+                    }
+                }
             }
         }
-        uasort( $data, array( $this, 'onDependencySort' ) );
-        parent::__construct( $data );
     }
-    
-    
-    
-    /**
-     * @internal
-     */
-    private function onDependencySort( array $a, array $b ){
-        // check if B depends on A
-        $deps = self::collectRefs( $b );
-        if( isset($deps[$a['id']]) ){
-            // yes, A is in B's dependency list. A must go first
-            return -1;
-        }
-        // check if A depends on B
-        $deps = self::collectRefs( $a );
-        if( isset($deps[$b['id']]) ){
-            // yes, B is in A's dependency list. B must go first
-            return 1;
-        }
-        return 0;
-    }
-         
-    
-    
+
+
+
     /**
      * @ignore 
      * Collect all models that a model references.

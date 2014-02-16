@@ -12,28 +12,30 @@ class ModelCollectionTest extends \PHPUnit_Framework_TestCase {
 
     // define a model that depends on a model
     private static $raw = array (
-        'things' => array(
-            'type' => 'array',
+        'foo' => array(),
+        'baz' => array(
             'items' => array(
-                '$ref' => 'thing',
+                '$ref' => 'bar',
             ),
         ),
-        'thing' => array (
-            'type' => 'object',
+        'bar' => array(
+            'items' => array(
+                '$ref' => 'foo',
+            ),
         ),
     );
     
     
     public function testConstruct(){
         $sorted = new ModelCollection( self::$raw );
-        $this->assertCount( 2, $sorted );
+        $this->assertCount( 3, $sorted );
         return $sorted;
     }
     
     
     public function testCollectRefs(){
-        $refs = ModelCollection::collectRefs( self::$raw );
-        $this->assertArrayHasKey('thing', $refs );
+        $refs = ModelCollection::collectRefs( self::$raw['bar'] );
+        $this->assertArrayHasKey('foo', $refs );
     }
     
     
@@ -41,10 +43,15 @@ class ModelCollectionTest extends \PHPUnit_Framework_TestCase {
      * @depends testConstruct
      */
     public function testDependencyOrder( ModelCollection $sorted ){
-        // test that the first item is "thing"
-        $order = array_values( $sorted->toArray() );
-        $this->assertEquals( 'thing', $order[0]['id'] );
-        $this->assertEquals( 'things', $order[1]['id'] );
+        $order = $sorted->getKeys();
+        // test that "foo" comes before "bar"
+        $lower = array_search('foo',$order);
+        $higher = array_search('bar',$order);
+        $this->assertGreaterThan( $lower, $higher, '"foo" index expected to be lower than "bar"' );
+        // test that "bar" comes before "baz"
+        $lower = array_search('bar',$order);
+        $higher = array_search('baz',$order);
+        $this->assertGreaterThan( $lower, $higher, '"bar" index expected to be lower than "baz"' );
     }
     
     
