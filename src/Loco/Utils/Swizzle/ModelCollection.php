@@ -21,11 +21,15 @@ class ModelCollection extends Collection {
                 $models[$id]['id'] = $id;
             }
             $graph[$id] = self::collectRefs($model);
+            // allow self-dependency
+            unset( $graph[$id][$id] );
         }
         // Add items with no dependencies until no items have dependencies left
         while( $models ){
+            $n = 0;
             foreach( array_keys($models) as $id ){
                 if( empty($graph[$id]) ){
+                    $n++;
                     // add item with no dependencies to collection
                     $this->set( $id, $models[$id] );
                     unset( $models[$id] );
@@ -34,6 +38,9 @@ class ModelCollection extends Collection {
                         unset($graph[$ref][$id]);
                     }
                 }
+            }
+            if( ! $n ){
+                throw new \Exception('circular references in model depenencies');
             }
         }
     }
