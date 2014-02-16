@@ -135,6 +135,11 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
                             'paramType' => 'path',
                             'defaultValue' => 'bar',
                             'type' => 'string',
+                        ),
+                        array ( 
+                            'name' => 'bar',
+                            'type' => 'fooType',
+                            'required' => false,
                         )
                     )
                 ),
@@ -147,7 +152,12 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
         $param = $op->getParam('foo');
         $this->assertEquals( 'uri', $param->getLocation() );
         $this->assertEquals( 'bar', $param->getDefault() );
+        $this->assertEquals( 'string', $param->getType() );
         $this->assertTrue( $param->getRequired() );
+        // test complex param type
+        $param = $op->getParam('bar');
+        $this->assertEquals( 'fooType', $param->getType() );
+        $this->assertFalse( $param->getRequired() );
         return $builder;
     }
     

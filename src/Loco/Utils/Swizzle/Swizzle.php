@@ -347,7 +347,7 @@ class Swizzle {
                 $method = strtolower( $config['httpMethod'] );
                 $id = $config['name'] = $method.'_'.str_replace('/','_',trim($uri,'/') );
             }
-            
+
             // allow custom command class, or global class for all commands
             if( isset($this->commandClasses[$id]) ){
                 $config['class'] = $this->commandClasses[$id];
@@ -559,9 +559,13 @@ class Swizzle {
             }
         }
         
-        // else handle as primitive type
         if( ! $type ){
             $type = isset($target['type']) ? $target['type'] : '';
+            if( $type && $this->getServiceDescription()->getModel($type) ){
+                // param type is registered model
+                return $target;
+            }
+            // else handle as primitive type
             $frmt = isset($target['format']) ? $target['format'] : '';
             $type = $target['type'] = $this->transformSimpleType( $type, $frmt );
             // else fall back to a sensible default
