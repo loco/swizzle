@@ -563,6 +563,8 @@ class Swizzle {
             $type = isset($target['type']) ? $target['type'] : '';
             if( $type && $this->getServiceDescription()->getModel($type) ){
                 // param type is registered model
+                $target['$ref'] = $type;
+                unset( $target['type'] );
                 return $target;
             }
             // else handle as primitive type
