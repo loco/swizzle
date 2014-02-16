@@ -44,6 +44,18 @@ class Swizzle {
     private $service;    
     
     /**
+     * Default response serialization type
+     * @var string xml|json
+     */    
+    private $responseType = 'json';    
+    
+    /**
+     * Default request body serialization type
+     * @var string xml|json
+     */    
+    private $requestType = 'json';    
+    
+    /**
      * Registry of custom reponse classes, mapped by method command name
      * @var array
      */    
@@ -267,36 +279,55 @@ class Swizzle {
     
     
     /**
-     * Add a Swagger model definition
+     * Create a Swagger model definition
      * @param array model structure from Swagger
-     * @return Parameter model added
+     * @param string location where parameters will be found in request or response
+     * @return Parameter model resolved against service description but not added
      */
-    public function addModel( array $model ){
-        $name = isset($model['id']) ? $model['id'] : '';
-        if( $name ){
-            $this->debug('+ adding model %s ...', $name );
+    private function createModel( array $model, $location ){
+        $name = isset($model['id']) ? trim($model['id']) : '';
+        if( ! $name ){
+            $name = $model['id'] = 'anon_'.self::hashArray($model);
         }
-        else {
-            $name = 'anon_'.self::hashArray($model);
-            $this->debug( '+ adding anonymous model: %s ...', $name );
-        }
+        // a model is basically a parameter, but has name property added
         $defaults = array (
             'name' => $name,
-            'type' => 'object'
+            'type' => 'object',
         );
-        // a model is basically a parameter, but has name property added
-        $data = $this->transformSchema( $model ) + $defaults;
+        $data = $this->transformSchema( $model + $defaults, $this->responseType );
         if( 'object' === $data['type'] ){
             $data['additionalProperties'] = false;
+            // model must have top level properties specified as serialized response type, but no response type itself
+            foreach( $data['properties'] as $key => $prop ){
+                $data['properties'][$key]['location'] = $location;
+            }
         }
+        else if( 'array' === $data['type'] ){
+            // @todo put location on each property within each item aws per GetUsersOutput example on Guzzle site.
+            // @see https://github.com/guzzle/guzzle/issues/560
+        }
+        
         // required makes no sense at root of model
         unset( $data['required'] );
-        // ok to add model
-        $service = $this->getServiceDescription();
-        $model = new Parameter( $data, $service );
-        $service->addModel( $model );
-        return $model;
+        
+        return new Parameter( $data, $this->getServiceDescription() );
     }   
+
+
+
+    /**
+     * Add a response model 
+     * @param array model structure from Swagger
+     * @return Parameter model added to service description
+     */
+    public function addModel( array $model ){
+        // swagger only has locations for requests, so we can safely default to our response serializer.
+        $model = $this->createModel( $model, $this->responseType );
+        $this->debug('+ adding model %s', $model->getName() );
+        $this->getServiceDescription()->addModel( $model );
+        return $model;
+    }
+
      
     
     
@@ -399,8 +430,7 @@ class Swizzle {
 
             // handle parameters
             if( isset($op['parameters']) ){
-                $template = array( 'location' => 'query' );
-                $config['parameters'] = $this->transformParams( $op['parameters'], $template );
+                $config['parameters'] = $this->transformParams( $op['parameters'] );
             }
             else {
                 $config['parameters'] = array();
@@ -435,23 +465,63 @@ class Swizzle {
     /**
      * Transform a swagger parameter to a Guzzle one
      */
-    private function transformParams( array $params, array $defaults = array() ){
-        $target = array();
+    private function transformParams( array $params ){
+        $locations = array();
+        $namespace = array();
         foreach( $params as $name => $_param ){
             if( isset($_param['name']) ){    
                 $name = $_param['name'];
             }
+            else {
+                $_param['name'] = $name;
+            }
             $param = $this->transformSchema( $_param );
-            // location differences 
-            if( isset($_param['paramType']) ){
-                $param['location'] = $this->transformLocation( $_param['paramType'] );
+            $location = isset($param['location']) ? $param['location'] : '';
+            // resolve models immediately. Guzzle will resolve anyway and we need the data for request body transforms
+            if( isset($param['$ref']) ){
+                $param = $this->getServiceDescription()->getModel( $param['$ref'] )->toArray();
+            }
+            // handle paramType -> location mapping.
+            if( $location ){
+                $location = $param['location'] = $this->transformLocation( $location );
                 // swagger doesn't allow optional path params
                 if( ! isset($param['required']) ){
-                    $param['required'] = 'uri' === $param['location'];
+                    $param['required'] = 'uri' === $location;
                 }
             }
-            $target[$name] = $param + $defaults;
+            // handle serialization in request body.
+            if( 'body' === $location ){
+                $location = $this->requestType;
+                // objects properties must be moved into parent namespace or Guzzle will wrap them.
+                if( isset($param['properties']) ) {
+                    foreach( $param['properties'] as $name => $child ){
+                        $child['location'] = $location;
+                        $locations[$location][$name] = $child;
+                        $namespace[$name][$location] = 1;
+                    }
+                    continue;
+                }
+            }
+            // else add single parameter by name
+            $locations[$location][$name] = $param;
+            $namespace[$name][$location] = 1;
         }        
+        // resolve all locations to single namespace
+        // conflict can occur due to differences in swagger/guzzle modelling of complex params
+        $target = array();
+        foreach( $locations as $location => $params ){
+            foreach( $params as $name => $param ) {
+               unset( $namespace[$name][$location] );
+               if( $conflicts = array_keys($namespace[$name]) ) {
+                   $alias = $name.'_'.$location;
+                   $this->debug('! %s parameter "%s" conflicts with %s, address as "%s"', $location, $name, implode(' and ',$conflicts), $alias );
+                   // namespace this property at our end ensuring it's sent to the API as expected.
+                   $param['sentAs'] = $name;
+                   $name = $param['name'] = $alias;
+               }
+               $target[$name] = $param; 
+            }
+        }
         return $target;
     }
 
@@ -460,22 +530,33 @@ class Swizzle {
     /**
      * Transform a Swagger request paramType to a Guzzle location.
      * Note that Guzzle has response locations too.
-     * @param string Swagger paramType field (path|query|body|header|form)
-     * @return string Guzzle location field (uri|query|body|header|postField|$default)
+     * @param string Swagger paramType request field (path|query|body|header|form)
+     * @return string Guzzle location field (uri|query|body|header|postField|xml|json)
      */
     private function transformLocation( $paramType ){
-        // request param: (statusCode|reasonPhrase|header|body|json|xml)
-        // response property: (uri|query|header|body|postField|postFile|json|xml|responseBody)
-        static $aliases = array(
-            'body' => 'body',
+        // Guzzle request locations: (statusCode|reasonPhrase|header|body|json|xml)
+        // Guzzle response locations: (uri|query|header|body|postField|postFile|json|xml|responseBody)
+        static $valid = array (
+            'uri' => 1,
+            'xml' => 1,
+            'json' => 1,
+            'body' => 1,
+            'query' => 1,
+            'header' => 1,
+            'postField' => 1,
+        );
+        // may be already transformed and just passing through
+        if( isset($valid[$paramType]) ){
+            return $paramType;
+        }        
+        static $aliases = array (
             'path' => 'uri',
+            'body' => 'body',
+            'form' => 'postField',
             'query' => 'query',
             'header' => 'header',
-            'form' => 'postField',
-            // 1:1 mappings if swagger response location passes through
-            'json' => 'json',
         );
-        // return alias, defaulting to query
+        // return alias, defaulting to empty
         return isset($aliases[$paramType]) ? $aliases[$paramType] : '';
     }
 
@@ -487,16 +568,12 @@ class Swizzle {
      * @return array Guzzle schema
      */
     private function transformSchema( array $source ){
-        // validate refs now, but Guzzle will resolve later
-        if( isset($source['$ref']) ){
-            if( ! $this->getServiceDescription()->getModel($source['$ref']) ){
-                throw new \Exception('Encountered $ref to "'.$source['$ref'].'" but model not registered');
-            }
-            return $source;
-        }
+        $name = isset($source['name']) ? $source['name'] : 'anon';
         // keys common to both swagger and guzzle
         static $common = array (
+            '$ref' => 1,
             'type' => 1,
+            'name' => 1,
             'enum' => 1,
             'items' => 1,
             'format' => 1,
@@ -511,18 +588,32 @@ class Swizzle {
         );
         // keys requiring translation
         static $trans = array (
+            'paramType' => 'location',
             'defaultValue' => 'default',
         );
-
         // initial translation
-        $target = $this->transformArray( $source, $common, $trans );
+        $target = $this->transformArray( $source, $common, $trans ) + array( 'type' => '' );
+
+        // validate Swagger refs now. Resolve later as appropriate.
+        if( isset($target['$ref']) ){
+            if( ! $this->getServiceDescription()->getModel($target['$ref']) ){
+                throw new \Exception('Encountered $ref to "'.$target['$ref'].'" in '.$name.' but model not registered');
+            }
+            unset( $target['type'] );
+            return $target;
+        }
+
+        // Validate data type
         $type = '';
-        
+
         // handle array of types entities
         if( isset($target['items']) ){
-            $type = $target['type'] = 'array';
+            $type = 'array';
+            if( $type !== $target['type'] ){
+                $this->debug('! %s %s declares items, coercing to "%s"', $target['type']?:'untyped', $name, $type );
+                $target['type'] = $type;
+            }
             // resolve model reference ensuring model exists
-            // @todo should $ref be allowed to resolve to a registered class?
             if( isset($target['items']['$ref']) ){
                 $ref = $target['items']['$ref'];
                 if( ! $this->getServiceDescription()->getModel($ref) ){
@@ -540,17 +631,16 @@ class Swizzle {
             }
         }
 
-        // handle object properties
+        // Recurse into object properties
         if( isset($source['properties']) ){
-            $type = $target['type'] = 'object';
-            // default location for response properties is JSON
-            // Note that swagger only supports locations in request parameters
-            $defaults = array ( 
-                'location' => 'json',
-            );
-            $target['properties'] = $this->transformParams( $source['properties'], $defaults );
+            $type = 'object';
+            if( $type !== $target['type'] ){
+                $this->debug('! %s %s declares properties, coercing to "%s"', $target['type']?:'untyped', $name, $type );
+                $target['type'] = $type;
+            }
+            $target['properties'] = $this->transformParams( $source['properties'] );
             // required params are an external array in Swagger, but applied individually as boolean in Guzzle
-            if( isset($source['required']) ){
+            if( isset($source['required']) && is_array($source['required']) ){
                 foreach( $source['required'] as $prop ){
                     if( isset($target['properties'][$prop]) ){
                         $target['properties'][$prop]['required'] = true;
@@ -560,7 +650,7 @@ class Swizzle {
         }
         
         if( ! $type ){
-            $type = isset($target['type']) ? $target['type'] : '';
+            $type = $originalType = $target['type'];
             if( $type && $this->getServiceDescription()->getModel($type) ){
                 // param type is registered model
                 $target['$ref'] = $type;
@@ -572,18 +662,20 @@ class Swizzle {
             $type = $target['type'] = $this->transformSimpleType( $type, $frmt );
             // else fall back to a sensible default
             if( ! $type ){
-                if( isset($source['properties']) ){
-                    $type = $target['type'] = 'object';
-                }
-                else {
-                    $type = $target['type'] = 'string';
-                }
+                $this->debug('! type "%s" unknown, defaulting to null', $originalType );
+                $type = $target['type'] = 'null';
             }
         }
 
         // Guzzle and swagger have minimal format overlap
         if( isset($target['format']) ){
             $target['format'] = $this->transformTypeFormat( $target['format'] );
+        }
+        
+        // ensure properties is set even if empty, which makes little sense.
+        if( 'object' === $type && empty($target['properties']) ){
+            $this->debug('! object %s has empty properties', $name );
+            $target['properties'] = array();
         }
         
         return $target;

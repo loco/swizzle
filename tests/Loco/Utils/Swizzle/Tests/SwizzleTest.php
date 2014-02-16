@@ -130,17 +130,34 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
             'operations' => array (
                 array (
                     'parameters' => array (
+                        // simple path parameter
                         array ( 
-                            'name' => 'foo',
+                            'name' => 'test',
                             'paramType' => 'path',
-                            'defaultValue' => 'bar',
+                            'defaultValue' => 'ok',
                             'type' => 'string',
                         ),
+                        // model parameter containing $foo sent in request body
                         array ( 
-                            'name' => 'bar',
+                            'name' => 'myFoo',
                             'type' => 'fooType',
-                            'required' => false,
-                        )
+                            'paramType' => 'body',
+                        ),
+                        // object literal containing $bar will get merged in with model
+                        array (
+                            'name' => 'myBar',
+                            'type' => 'object',
+                            'paramType' => 'body',
+                            'properties' => array(
+                                array( 'type' => 'string', 'name' => 'baz' ),
+                            ),
+                        ),
+                        // deliberately add a parameter that conflicts with request body property
+                        array (
+                            'name' => 'bar',
+                            'type' => 'string',
+                            'paramType' => 'query',
+                        ),
                     )
                 ),
             ),
@@ -149,15 +166,31 @@ class SwizzleTest extends \PHPUnit_Framework_TestCase {
         $descr = $builder->getServiceDescription();    
         $op = $descr->getOperation('get_test_params');
         /* @var $param Guzzle\Service\Description\Parameter */
-        $param = $op->getParam('foo');
+        $param = $op->getParam('test');
+        $this->assertInstanceOf( '\Guzzle\Service\Description\Parameter', $param );
         $this->assertEquals( 'uri', $param->getLocation() );
-        $this->assertEquals( 'bar', $param->getDefault() );
+        $this->assertEquals( 'ok', $param->getDefault() );
         $this->assertEquals( 'string', $param->getType() );
         $this->assertTrue( $param->getRequired() );
-        // test complex param type
+        // The barType request body should have its properties merged into root
+        $param = $op->getParam('myBar');
+        $this->assertNull( $param );
+        $child = $op->getParam('baz');
+        $this->assertInstanceOf( '\Guzzle\Service\Description\Parameter', $child );
+        $this->assertEquals( 'json', $child->getLocation() );
+        // Conflicting bar query param would be reached before conflicting with request body
+        // @todo why?
         $param = $op->getParam('bar');
-        $this->assertEquals( 'fooType', $param->getType() );
-        $this->assertFalse( $param->getRequired() );
+        $this->assertInstanceOf( '\Guzzle\Service\Description\Parameter', $param );
+        $this->assertEquals( 'query', $param->getLocation() );
+        // The fooType request body  should have resolved to an object too
+        $param = $op->getParam('myFoo');
+        $this->assertNull( $param );
+        // We will need to use *_json namespace to access it as it's conflicted.
+        $child = $op->getParam('bar_json');
+        $this->assertInstanceOf( '\Guzzle\Service\Description\Parameter', $child );
+        $this->assertEquals( 'json', $child->getLocation() );
+
         return $builder;
     }
     

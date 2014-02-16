@@ -11,6 +11,7 @@ class ModelCollection extends Collection {
     /**
      * Construct collection from models indexed by name
      * @param array $models Associative array of data to set
+     * @throws \Exception if circular references cannot be resolved.
      */
     public function __construct( array $models = array() ){
         parent::__construct();

@@ -79,7 +79,6 @@ class ModelTest extends GuzzleTestCase {
             // define array of typed objects
             'TestModelList' => array(
               'type' => 'array',
-              'location' => 'json',
               'items' => array(
                 '$ref' => 'TestModel',
               ),
