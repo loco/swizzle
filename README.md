@@ -39,7 +39,7 @@ $service->build('http://foo.bar/path/to/swagger/docs/');
 echo $service->export();
 ```
 
-More advanced usage includes registering custom Guzzle classes for commands and responses. See [example](https://github.com/loco-app/swizzle/tree/master/example) directory for fuller, working examples.
+More advanced usage includes registering custom Guzzle classes for commands and responses. See [example](https://github.com/loco/swizzle/tree/master/example) directory for fuller, working examples.
 
 
 ### Limitations
