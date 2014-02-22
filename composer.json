@@ -4,7 +4,7 @@
     "type": "library",
     "keywords": ["api","Guzzle","Swagger"],
     "description": "Build Guzzle service descriptions from Swagger compliant APIs",
-    "homepage" : "https://github.com/loco-app/swizzle",
+    "homepage" : "https://github.com/loco/swizzle",
     "authors": [
         {
             "name": "Tim Whitlock",
