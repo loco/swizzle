@@ -98,9 +98,7 @@ class ModelTest extends GuzzleTestCase {
               ),
             ),
           ),
-          
         ) );
-        
 
         $client = new Client;
         $client->setDescription( $service );
@@ -236,5 +234,34 @@ class ModelTest extends GuzzleTestCase {
         $list = $response->get('list');
         $this->assertCount( 3, $list );
     }
-        
+    
+    
+    
+    /**
+     * #depends testClientConstruct
+     * https://github.com/guzzle/guzzle/issues/581
+     *
+    public function testModelRecursion( Client $client ){
+        // define a model with a property that is a list of the same model
+        $raw = array (
+          'name' => 'TestRecursion',
+          'type' => 'object',
+          'properties' => array(
+            'recurse' => array(
+              'type' => 'array',
+              'items' => array(
+                '$ref' => 'TestRecursion',
+              ),
+            ),
+          ),
+        );
+        $desc = $client->getServiceDescription();
+        $model = new Parameter( $raw, $desc );
+        //$model->toArray(); // <- [1] call this now leaves items empty
+        $desc->addModel( $model );
+        $model->toArray(); // <- [2] this would infinitely loop without call [1]
+    }*/
+         
 }
+
+
