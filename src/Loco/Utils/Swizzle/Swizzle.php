@@ -259,7 +259,8 @@ class Swizzle {
                 usleep( $this->delay );
             }
             // @todo do proper path resolution here, allowing a cross-domain spec.
-            $this->debug('pulling %s ...', $path );
+            $path = trim($path,'/ ');
+            $this->debug('pulling /%s ...', $path );
             $declaration = $client->getDeclaration( compact('path') );
             foreach ( $declaration->getModels() as $model ) {
                 $this->addModel( $model );
