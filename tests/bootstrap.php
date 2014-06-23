@@ -8,5 +8,5 @@ if ( ! file_exists(dirname(__DIR__).'/vendor') ) {
 }
 
 $loader = require_once dirname(__DIR__).'/vendor/autoload.php';
-$loader->add('Loco\\Utils\\Swizzle\\Tests', __DIR__ );
+$loader->setPsr4('Loco\\Tests\\Utils\\Swizzle\\', __DIR__.'/Tests' );
 

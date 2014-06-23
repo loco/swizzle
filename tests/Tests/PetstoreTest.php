@@ -1,6 +1,6 @@
 <?php
 
-namespace Loco\Utils\Swizzle\Tests;
+namespace Loco\Tests\Utils\Swizzle;
 
 use Guzzle\Service\Client;
 use Guzzle\Service\Description\ServiceDescription;
@@ -56,7 +56,7 @@ class PetstoreTest extends \PHPUnit_Framework_TestCase {
      * @depends testClientConstruct
      */
     public function testFindPetsByStatus( Client $client ){
-        $pets = $client->findPetsByStatus( array( 'status' => 'pending' ) );
+        $pets = $client->findPetsByStatus( array( 'status' => 'sold' ) );
         
         // listing should be validated as Pet_array model, except it doesn't work so disabled.
         // $this->assertInstanceOf('\Guzzle\Service\Resource\Model', $pets );
@@ -75,9 +75,11 @@ class PetstoreTest extends \PHPUnit_Framework_TestCase {
      * @depends testFindPetsByStatus
      */
     public function testGetPetById( Client $client, $petId ){
+        $petId = 3; // <- bug in petstore definition disallows pidId>100
         $pet = $client->getPetById( compact('petId') );
         $this->assertInstanceOf('\Guzzle\Service\Resource\Model', $pet );
         $this->assertEquals( $petId, $pet['id'] );
+        $this->assertInternalType( 'string', $pet['name'] );
     }
     
     

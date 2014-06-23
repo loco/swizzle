@@ -1,6 +1,6 @@
 <?php
 
-namespace Loco\Tests\Api;
+namespace Loco\Tests\Utils\Swizzle;
 
 use Guzzle\Http\Message\Response;
 use Guzzle\Plugin\Mock\MockPlugin;
@@ -137,6 +137,7 @@ class ModelTest extends GuzzleTestCase {
     /**
      * Test single model response
      * @depends testClientConstruct
+     * @group mock
      */
     public function testModelResponseValidates( Client $client ){        
         // fake a response with valid "foo" and legally missing "bar" property
@@ -155,6 +156,7 @@ class ModelTest extends GuzzleTestCase {
     /**
      * Test single model response that fails validation
      * @depends testClientConstruct
+     * @group mock
      * @expectedException \Guzzle\Service\Exception\ValidationException
      */
     public function testModelResponseFailure( Client $client ){        
@@ -169,6 +171,7 @@ class ModelTest extends GuzzleTestCase {
 
     /**
      * Test array of models in response
+     * @group mock
      * @depends testClientConstruct
      */
     public function testArrayResponse( Client $client ){        
@@ -197,6 +200,7 @@ class ModelTest extends GuzzleTestCase {
 
     /**
      * Test array of models in response defined with wrapper model 
+     * @group mock
      * @depends testClientConstruct
      */
     public function testModelListResponse( Client $client ){        
@@ -218,6 +222,7 @@ class ModelTest extends GuzzleTestCase {
 
     /**
      * Test array of models in response defined with wrapper model containing an array property
+     * @group mock
      * @depends testClientConstruct
      */
     public function testModelListObjectResponse( Client $client ){        

@@ -1,6 +1,6 @@
 <?php
 
-namespace Loco\Utils\Swizzle\Tests;
+namespace Loco\Tests\Utils\Swizzle;
 
 use Guzzle\Tests\GuzzleTestCase;
 use Guzzle\Service\Builder\ServiceBuilder;
@@ -10,6 +10,7 @@ use Loco\Utils\Swizzle\SwaggerClient;
 
 /**
  * Tests SwaggerClient
+ * @group swagger
  */
 class SwaggerClientTest extends GuzzleTestCase {
     

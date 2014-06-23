@@ -15,12 +15,12 @@
     ],
     "require": {
         "php": ">=5.3.3",
-        "guzzle/guzzle": "~3.7",
+        "guzzle/guzzle": "~3.8",
         "monolog/monolog": "1.*"
     },
     "autoload": {
-        "psr-0": {
-            "Loco\\Utils\\Swizzle": "src/"
+        "psr-4": {
+            "Loco\\Utils\\Swizzle\\": "src/"
         }
     },
     "extra": {

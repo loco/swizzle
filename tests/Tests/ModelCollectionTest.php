@@ -1,6 +1,6 @@
 <?php
 
-namespace Loco\Utils\Swizzle\Tests;
+namespace Loco\Tests\Utils\Swizzle;
 
 use Loco\Utils\Swizzle\ModelCollection;
 
