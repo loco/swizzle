@@ -41,6 +41,8 @@ echo $service->export();
 
 More advanced usage includes registering custom Guzzle classes for commands and responses. See [example](https://github.com/loco/swizzle/tree/master/example) directory for fuller, working examples.
 
+Build the PHP API documentation with [apigen](http://apigen.org/) using `apigen -c apigen.yml`
+
 
 ### Limitations
 
