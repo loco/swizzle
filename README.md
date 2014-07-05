@@ -9,7 +9,7 @@ Build [Guzzle](http://guzzlephp.org) service descriptions from [Swagger](https:/
 
 Although Guzzle's service descriptions are [heavily inspiried](http://docs.guzzlephp.org/en/latest/webservice-client/guzzle-service-descriptions.html) by the Swagger spec, they are different enough that we need something to bridge the divide.
 
-Swizzle crawls JSON Swagger docs ([such as ours](https://localise.biz/api/docs)) and transforms it into a Guzzle service description for output into your client code.
+Swizzle crawls JSON Swagger docs ([such as ours](https://localise.biz/api/swagger)) and transforms it into a Guzzle service description for output into your client code.
 
 
 ## Installation
