@@ -25,7 +25,7 @@ $builder->registerCommandClass( '', '\Loco\Http\LocoCommand' );
        
 // Now we're ready to build from a live endpoint
 // This must be a Valid Swagger JSON resource listing.
-$builder->build('https://localise.biz/api/docs');        
+$builder->build('https://localise.biz/api/swagger');        
 
 // export service description to PHP source:
 echo $builder->export();
