@@ -48,3 +48,4 @@ Build the PHP API documentation with [apigen](http://apigen.org/) using `apigen 
 
 This version was developed very quickly for our own API specifically. That means it's not guaranteed to support the whole Swagger spec. 
 
+This version was written for Guzzle 3, but the Guzzle project has since moved on to version 4.
