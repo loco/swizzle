@@ -14,8 +14,8 @@
         }
     ],
     "require": {
-        "php": ">=5.3.3",
-        "guzzle/guzzle": "~3.8",
+        "php": ">=5.5",
+        "guzzlehttp/guzzle-services": "^1.1",
         "monolog/monolog": "1.*"
     },
     "autoload": {
@@ -27,5 +27,5 @@
         "branch-alias": {
             "dev-master": "1.0.x-dev"
         }
-    }   
+    }
 }
