@@ -2,92 +2,99 @@
 
 namespace Loco\Utils\Swizzle;
 
-use Monolog\Logger;
-use Monolog\Handler\StreamHandler;
-
-use Guzzle\Service\Description\ServiceDescription;
-use Guzzle\Service\Description\Operation;
-use Guzzle\Service\Description\Parameter;
-use Guzzle\Parser\UriTemplate\UriTemplate;
-
-use Loco\Utils\Swizzle\Response\BaseResponse;
-use Loco\Utils\Swizzle\Response\ResourceListing;
+use GuzzleHttp\Command\Guzzle\Description;
+use GuzzleHttp\Command\Guzzle\Operation;
+use GuzzleHttp\Command\Guzzle\Parameter;
 use Loco\Utils\Swizzle\Response\ApiDeclaration;
-
+use Loco\Utils\Swizzle\Response\ResourceListing;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
 
 /**
  * Models Swagger API declarations and converts to Guzzle service descriptions.
  */
 class Swizzle {
-    
+
     /**
      * Monolog logger for debug output
      * @var Logger
      */
-    private $logger;     
-    
+    private $logger;
+
     /**
      * Expected swagger spec version
      * @var string
      */
-    const SWAGGER_VERSION = '1.2';     
-    
+    const SWAGGER_VERSION = '1.2';
+
     /**
      * Initial parameters to pass to ServiceDescription constructor
      * @var array
-     */    
-    private $init;     
-    
-    /**
-     * @var ServiceDescription
      */
-    private $service;    
-    
+    private $init;
+
+    /**
+     * @var Description
+     */
+    private $serviceDescription;
+
     /**
      * Default response serialization type
      * @var string xml|json
-     */    
-    private $responseType = 'json';    
-    
+     */
+    private $responseType = 'json';
+
     /**
      * Default request body serialization type
      * @var string xml|json
-     */    
-    private $requestType = 'json';    
-    
+     */
+    private $requestType = 'json';
+
     /**
      * Registry of custom reponse classes, mapped by method command name
      * @var array
-     */    
+     */
     private $responseClasses = array();
-    
+
     /**
      * Registry of custom operation command classes, mapped by method command name
      * @var array
-     */    
+     */
     private $commandClasses = array();
-    
+
     /**
      * Delay between HTTP requests in microseconds
      * @var int
-     */    
+     */
     private $delay = 200000;
-    
+
+    /**
+     * @var Parameter[]
+     */
+    private $models;
+
+    /**
+     * @var Operation[]
+     */
+    private $operations;
+
     /**
      * Construct with minimum mandatory parameters
+     *
      * @param string Name of the API
      * @param string Summary of the API
      * @param string API version
      */
-    public function __construct( $name, $description = '', $apiVersion = '' ){
-        $this->init = compact('name','description','apiVersion');
+    public function __construct($name, $description = null, $apiVersion = null)
+    {
+        $this->init = compact('name', 'description', 'apiVersion');
         $this->logger = new Logger('swizzle');
         // if we don't add a handler we get debug messages by default.
-        $this->logger->pushHandler( new StreamHandler('php://stderr', Logger::ERROR ) );
+        $this->logger->pushHandler(new StreamHandler('php://stderr', Logger::ERROR));
     }
-    
-    
-    
+
+
+
     /**
      * Enable debug logging to show build progress
      * @param string|resource
@@ -97,82 +104,85 @@ class Swizzle {
         $this->logger->pushHandler( new StreamHandler( $resource, Logger::DEBUG ) );
         return $this;
     }
-    
 
-    
     /**
      * @internal Log debug events in verbose mode
      */
-    private function debug( $message ){
-        if( 1 < func_num_args() ){
-            $message = call_user_func_array( 'sprintf', func_get_args() );
+    private function debug($message)
+    {
+        if (1 < func_num_args()) {
+            $message = call_user_func_array('sprintf', func_get_args());
         }
-        $this->logger->addDebug( $message );
-    }        
-    
+        $this->logger->addDebug($message);
+    }
 
-    
+
+
     /**
      * Set delay between HTTP requests
      * @param int delay in microseconds
      * @return Swizzle
-     */ 
+     */
     public function setDelay( $microseconds ){
         $this->delay = (int) $microseconds;
         return $this;
     }
-    
 
-    
     /**
      * Set an initial value to be passed to ServiceDescription constructor.
+     *
      * @return Swizzle
      */
-    private function setInitValue( $key, $value ){
-        if( $this->service ){
+    private function setInitValue($key, $value)
+    {
+        if ($this->serviceDescription !== null) {
             throw new \Exception('Too late to set "'.$key.'"');
         }
         $this->init[$key] = $value;
+
         return $this;
-    }    
-    
-    
-    
+    }
+
+
+
     /**
      * Set base URL
      * @param string base url common to all api calls
-     * @return string 
+     * @return string
      */
-    public function setBaseUrl( $baseUrl ){
-        return $this->setInitValue( 'baseUrl', $baseUrl );
-    }    
+    public function setBaseUrl( $baseUri ){
+        return $this->setInitValue( 'baseUri', $baseUri );
+    }
 
-    
-    
     /**
      * Set API version string
+     *
      * @param string api version
+     *
      * @return Swizzle
      */
-    public function setApiVersion( $apiVersion ){
-        return $this->setInitValue( 'apiVersion', $apiVersion );
+    public function setApiVersion($apiVersion)
+    {
+        return $this->setInitValue('apiVersion', $apiVersion);
     }
-     
 
-    
     /**
      * Get compiled Guzzle service description
-     * @return ServiceDescription
+     *
+     * @return Description
+     *
+     * @throws \InvalidArgumentException
      */
-    public function getServiceDescription(){
-        if( ! $this->service ){
-            $this->service = new ServiceDescription( $this->init );
+    public function getServiceDescription()
+    {
+        if ($this->serviceDescription === null) {
+            $this->serviceDescription = new Description($this->init);
         }
-        return $this->service;
+        return $this->serviceDescription;
     }
-    
-    
-    
+
+
+
     /**
      * Apply a bespoke responseClass to a given method
      * @param string name of command returning this response class
@@ -182,14 +192,14 @@ class Swizzle {
     public function registerResponseClass( $name, $class ){
         $this->responseClasses[$name] = $class;
         // set retrospectively if method already encountered
-        if( $this->service ){
-            $op = $this->service->getOperation($name) and
+        if( $this->serviceDescription ){
+            $op = $this->serviceDescription->getOperation($name) and
             $op->setResponseClass( $class );
         }
         return $this;
-    }     
-    
-    
+    }
+
+
     /**
      * Apply a bespoke operation command class to a given method, or all methods
      * @param string name of command using this class, or "" for all.
@@ -200,9 +210,9 @@ class Swizzle {
     public function registerCommandClass( $name, $class ){
         $this->commandClasses[$name] = $class;
         // set retrospectively if method already encountered
-        if( $this->service ){
+        if( $this->serviceDescription ){
             if( $name ){
-                $op = $this->service->getOperation($name) and
+                $op = $this->serviceDescription->getOperation($name) and
                 $op->setClass( $class );
             }
             else {
@@ -210,84 +220,87 @@ class Swizzle {
             }
         }
         return $this;
-    }    
-    
-    
-    
+    }
+
+
+
     /**
      * Build from a live endpoint
      * @param string Swagger compliant JSON endpoint for resource listing
      * @throws \Exception
      * @return Swizzle
      */
-    public function build( $base_url ){
-        $this->service = null;
-        $client = SwaggerClient::factory( compact('base_url') );
-        $this->debug('pulling resource listing from %s', $base_url );
-        /* @var $listing ResourceListing */
-        $listing = $client->getResources();
+    public function build($baseUri)
+    {
+        $this->serviceDescription = null;
+        $client = SwaggerClient::factory( compact('baseUri') );
+        $this->debug('Fetching resource listing from %s', $baseUri );
+        $result = $client->getResources();
+        $listing = new ResourceListing($result->toArray());
+
         // check this looks like a resource listing
-        if( ! $listing->isSwagger() ){
-            throw new \Exception("This doesn't look like a Swagger spec");
+        if (!$listing->isSwagger()) {
+            throw new \RuntimeException("This doesn't look like a Swagger spec");
         }
-        if( ! $listing->getApis() ){
-            $this->logger->addAlert( "Resource listing doesn't define any APIs" );
+        if (!$listing->getApis()) {
+            $this->logger->addAlert("Resource listing doesn't define any APIs");
         }
         // check swagger version
-        if( self::SWAGGER_VERSION !== $listing->getSwaggerVersion() ){
-            throw new \Exception( 'Unsupported Swagger version, Swizzle expects '.self::SWAGGER_VERSION );
+        if (self::SWAGGER_VERSION !== $listing->getSwaggerVersion()) {
+            throw new \RuntimeException('Unsupported Swagger version, Swizzle expects '.self::SWAGGER_VERSION);
         }
         // Declared version overrides anything we've set
-        if( $version = $listing->getApiVersion() ){
-            $this->debug('+ set apiVersion %s', $version );
-            $this->setApiVersion( $version );
+        if ($version = $listing->getApiVersion()) {
+            $this->debug('+ set apiVersion %s', $version);
+            $this->setApiVersion($version);
         }
         // Set description if missing from constructor
-        if( ! $this->init['description'] ){
+        if (empty($this->init['description'])) {
             $info = $listing->getInfo();
-            $this->init['description'] = $info['description']?:$this->init['title'];
+            $this->init['description'] = $info['description'] ?: $this->init['title'];
+        }
+        // set base path from docs location if not provided
+        if (empty($this->init['baseUri'])) {
+            $this->init['baseUri'] = self::mergeUrl('/', $baseUri);
         }
         // no more configs allowed now, Guzzle service gets constructed
         $service = $this->getServiceDescription();
-        // set base path from docs location if not provided
-        if( ! $service->getBaseUrl() ){
-            $service->setBaseUrl( self::mergeUrl('/', $base_url ) );
-        }
         // ready to pull each api declaration
         foreach( $listing->getApiPaths() as $path ){
             if( $this->delay ){
                 usleep( $this->delay );
             }
             // @todo do proper path resolution here, allowing a cross-domain spec.
-            $path = trim($path,'/ ');
-            $this->debug('pulling /%s ...', $path );
+            $path = rtrim(parse_url($baseUri)['path'], '/').'/'.ltrim($path, '/');
+            $this->debug('pulling %s ...', $path );
             $declaration = $client->getDeclaration( compact('path') );
-            foreach ( $declaration->getModels() as $model ) {
+            $apiDeclaration = new ApiDeclaration($declaration->toArray());
+            foreach ( $apiDeclaration->getModels() as $model ) {
                 $this->addModel( $model );
             }
             // Ensure a fully qualified base url for this api
-            $baseUrl = self::mergeUrl( $declaration->getBasePath(), $service->getBaseUrl() );
+            $baseUrl = self::mergeUrl( $apiDeclaration->getBasePath(), $service->getBaseUri() );
             // add each api against required base url
-            foreach( $declaration->getApis() as $api ){
+            foreach( $apiDeclaration->getApis() as $api ){
                 $this->addApi( $api, $baseUrl );
             }
         }
         $this->debug('finished');
         return $this;
     }
-    
-    
-    
-    
+
     /**
      * Create a Swagger model definition
-     * @param array model structure from Swagger
+     *
+     * @param array $model
      * @param string location where parameters will be found in request or response
+     *
      * @return Parameter model resolved against service description but not added
+     * @throws \Exception
      */
     private function createModel( array $model, $location ){
-        $name = isset($model['id']) ? trim($model['id']) : '';
-        if( ! $name ){
+        $name = isset($model['id']) ? trim($model['id']) : null;
+        if (empty($name)) {
             $name = $model['id'] = 'anon_'.self::hashArray($model);
         }
         // a model is basically a parameter, but has name property added
@@ -295,7 +308,7 @@ class Swizzle {
             'name' => $name,
             'type' => 'object',
         );
-        $data = $this->transformSchema( $model + $defaults, $this->responseType );
+        $data = $this->transformSchema( $model + $defaults);
         if( 'object' === $data['type'] ){
             $data['additionalProperties'] = false;
             // model must have top level properties specified as serialized response type, but no response type itself
@@ -307,51 +320,53 @@ class Swizzle {
             // @todo put location on each property within each item aws per GetUsersOutput example on Guzzle site.
             // @see https://github.com/guzzle/guzzle/issues/560
         }
-        
+
         // required makes no sense at root of model
         unset( $data['required'] );
-        
-        return new Parameter( $data, $this->getServiceDescription() );
-    }   
 
-
+        return new Parameter($data, ['description' => $this->getServiceDescription()]);
+    }
 
     /**
-     * Add a response model 
+     * Add a response model
+     *
      * @param array model structure from Swagger
+     *
      * @return Parameter model added to service description
      */
-    public function addModel( array $model ){
+    public function addModel(array $model)
+    {
         // swagger only has locations for requests, so we can safely default to our response serializer.
-        $model = $this->createModel( $model, $this->responseType );
-        $this->debug('+ adding model %s', $model->getName() );
-        $this->getServiceDescription()->addModel( $model );
+        $model = $this->createModel($model, $this->responseType);
+        $this->debug('+ adding model %s', $model->getName());
+        $this->models[$model->getName()] = $model->toArray();
+
         return $model;
     }
 
-     
-    
-    
     /**
      * Add a Swagger Api declaration which may consist of multiple operations
+     *
      * @param array consisting of path, description and array of operations
      * @param string URL inferring the base location for api path
+     *
      * @throws \Exception
      * @return Swizzle
-     */    
-    public function addApi( array $api, $baseUrl = '' ){
+     */
+    public function addApi(array $api, $baseUri = null)
+    {
         $service = $this->getServiceDescription();
-        if( ! $baseUrl ){
-            $baseUrl = $service->getBaseUrl();
+        if ($baseUri === null) {
+            $baseUri = $service->getBaseUri()->__toString();
         }
         // resolve URL relative to base path for all operations
-        $uri = implode( '/', array( rtrim($baseUrl,'/'), ltrim($api['path'],'/') ) );
+        $uri = implode('/', [rtrim($baseUri, '/'), ltrim($api['path'], '/')]);
         // keep domain only if not under service base path
-        if( 0 === strpos( $uri, $service->getBaseUrl() ) ){
-            $uri = preg_replace('!^https?://[^/]+!', '', $uri );
+        if (strpos($uri, $baseUri) === 0) {
+            $uri = preg_replace('!^https?://[^/]+!', '', $uri);
         }
-        $this->debug('+ adding api %s ...', $uri );
-        
+        $this->debug('+ adding api %s ...', $uri);
+
         // no need for full url if relative to current
         // operation keys common to both swagger and guzzle
         static $common = array (
@@ -367,12 +382,12 @@ class Swizzle {
         static $defaults = array (
             'httpMethod' => 'GET',
         );
-        foreach( $api['operations'] as $op ){
-            $config = $this->transformArray( $op, $common, $trans ) + $defaults;
+        foreach( $api['operations'] as $operationData ){
+            $config = $this->transformArray( $operationData, $common, $trans ) + $defaults;
             $config['uri'] = $uri;
             // command must have a name, and must be unique across methods
-            if( isset($op['nickname']) ){
-                $id = $config['name'] = $op['nickname'];
+            if( isset($operationData['nickname']) ){
+                $id = $config['name'] = $operationData['nickname'];
             }
             // generate naff nickname if not specified
             else {
@@ -381,35 +396,33 @@ class Swizzle {
             }
 
             // allow custom command class, or global class for all commands
-            if( isset($this->commandClasses[$id]) ){
+            if (isset($this->commandClasses[$id])) {
                 $config['class'] = $this->commandClasses[$id];
-            }
-            else if( isset($this->commandClasses['']) ){
+            } elseif (isset($this->commandClasses[''])) {
                 $config['class'] = $this->commandClasses[''];
             }
 
             // allow registered response class to override all response type logic
-            if( isset($this->responseClasses[$id]) ){
+            if (isset($this->responseClasses[$id])) {
                 $config['responseType'] = 'class';
                 $config['responseClass'] = $this->responseClasses[$id];
-            }
-            // handle response type if defined
-            else if( isset($config['responseType']) ){
+            } elseif (isset($config['responseType'])) { // handle response type if defined
 
                 // Check for primitive values first
-                $type = $this->transformSimpleType( $config['responseType'] ) or
-                $type = $config['responseType'];
+                $type = $this->transformSimpleType($config['responseType'])
+                    ? $this->transformSimpleType($config['responseType'])
+                    : $type = $config['responseType'];
 
                 // Array primitive may be typed with 'items' spec, but Guzzle operation ignores at top level
                 if( 'array' === $type ){
-                    if( isset($op['items']) ){
+                    if( isset($operationData['items']) ){
                         $this->debug("! no modelling support for root arrays. Item types won't be validated" );
                     }
-                } 
+                }
                 // Root objects must be declared as models in Guzzle. 
                 // i.e "object" is not a valid primitive for responseClass
                 else if( 'object' === $type ){
-                    $model = $this->addModel( $op );
+                    $model = $this->addModel( $operationData );
                     $type = $model->getName();
                 }
                 // allowed responseClass primitives are 'array', 'boolean', 'string', 'integer' and ''
@@ -422,24 +435,24 @@ class Swizzle {
                     $this->debug('! empty type "%s" defaulted to empty responseClass', $config['responseType'] );
                     $type = '';
                 }
-                
+
                 // Ensure service contructor calls inferResponseType by having class but no type
                 // This will handle Guzzle primatives, models and fall back to class
-                $config['responseClass'] = $type;
+                $config['responseModel'] = $type;
                 unset( $config['responseType'] );
             }
 
             // handle parameters
-            if( isset($op['parameters']) ){
-                $config['parameters'] = $this->transformParams( $op['parameters'] );
+            if( isset($operationData['parameters']) ){
+                $config['parameters'] = $this->transformParams( $operationData['parameters'] );
             }
             else {
                 $config['parameters'] = array();
             }
 
             // handle responseMessages -> errorResponses
-            if( isset($op['responseMessages']) ){
-                $config['errorResponses'] = $this->transformResponseMessages($op['responseMessages']);
+            if( isset($operationData['responseMessages']) ){
+                $config['errorResponses'] = $this->transformResponseMessages($operationData['responseMessages']);
             }
             else {
                 $config['errorResponses'] = array();
@@ -447,58 +460,63 @@ class Swizzle {
 
             // @todo how to deny additional parameters in command calls?
             // $config['additionalParameters'] = false;
-            $operation = new Operation( $config, $service );
-            // Sanitize custom response class because Guzzle doesn't know it doesn't exist yet
-            if( Operation::TYPE_CLASS === $operation->getResponseType() ){
-                $class = $operation->getResponseClass();
-                if( empty($this->responseClasses[$id]) || $class !== $this->responseClasses[$id] ){
-                    throw new \Exception('responseType defaulted to class "'.$class.'" but class not registered');
-                }
-            }
-            $service->addOperation( $operation );
+            $operation = new Operation($config, $service);
+//            // Sanitize custom response class because Guzzle doesn't know it doesn't exist yet
+//            if( Operation::TYPE_CLASS === $operation->getResponseType() ){
+//                $class = $operation->getResponseClass();
+//                if( empty($this->responseClasses[$id]) || $class !== $this->responseClasses[$id] ){
+//                    throw new \Exception('responseType defaulted to class "'.$class.'" but class not registered');
+//                }
+//            }
+//            $service->addOperation( $operation );
+            $this->operations[$operation->getName()] = $operation->toArray();
             // next operation -
         }
         return $this;
     }
 
-
-
     /**
      * Transform a swagger parameter to a Guzzle one
+     *
+     * @param array $params
+     *
+     * @return array
+     * @throws \Exception
      */
-    private function transformParams( array $params ){
-        $locations = array();
-        $namespace = array();
-        foreach( $params as $name => $_param ){
-            if( isset($_param['name']) ){    
-                $name = $_param['name'];
+    private function transformParams(array $params)
+    {
+        $locations = [];
+        $namespace = [];
+        foreach ($params as $name => $param) {
+            if (isset($param['name'])) {
+                $name = $param['name'];
+            } else {
+                $param['name'] = $name;
             }
-            else {
-                $_param['name'] = $name;
-            }
-            $param = $this->transformSchema( $_param );
+            /** @var array[][] $param */
+            $param = $this->transformSchema($param);
             $location = isset($param['location']) ? $param['location'] : '';
             // resolve models immediately. Guzzle will resolve anyway and we need the data for request body transforms
-            if( isset($param['$ref']) ){
-                $param = $this->getServiceDescription()->getModel( $param['$ref'] )->toArray();
+            if (isset($param['$ref'])) {
+                $param = $this->models[$param['$ref']];
             }
             // handle paramType -> location mapping.
-            if( $location ){
-                $location = $param['location'] = $this->transformLocation( $location );
+            if ($location) {
+                $location = $param['location'] = $this->transformLocation($location);
                 // swagger doesn't allow optional path params
-                if( ! isset($param['required']) ){
+                if (!isset($param['required'])) {
                     $param['required'] = 'uri' === $location;
                 }
             }
             // handle serialization in request body.
-            if( 'body' === $location ){
+            if ('body' === $location) {
                 $location = $this->requestType;
                 // objects properties must be moved into parent namespace or Guzzle will wrap them.
-                if( isset($param['properties']) ) {
-                    foreach( $param['properties'] as $name => $child ){
-                        $child['location'] = $location;
-                        $locations[$location][$name] = $child;
-                        $namespace[$name][$location] = 1;
+                if (isset($param['properties'])) {
+                    foreach ($param['properties'] as $propertyName => $property) {
+                        $property['location'] = $location;
+                        $locations[$location][$propertyName] = $property;
+                        $namespace[$propertyName][$location] = 1;
                     }
                     continue;
                 }
@@ -506,21 +524,21 @@ class Swizzle {
             // else add single parameter by name
             $locations[$location][$name] = $param;
             $namespace[$name][$location] = 1;
-        }        
+        }
         // resolve all locations to single namespace
         // conflict can occur due to differences in swagger/guzzle modelling of complex params
-        $target = array();
-        foreach( $locations as $location => $params ){
-            foreach( $params as $name => $param ) {
-               unset( $namespace[$name][$location] );
-               if( $conflicts = array_keys($namespace[$name]) ) {
-                   $alias = $name.'_'.$location;
-                   $this->debug('! %s parameter "%s" conflicts with %s, address as "%s"', $location, $name, implode(' and ',$conflicts), $alias );
-                   // namespace this property at our end ensuring it's sent to the API as expected.
-                   $param['sentAs'] = $name;
-                   $name = $param['name'] = $alias;
-               }
-               $target[$name] = $param; 
+        $target = [];
+        foreach ($locations as $location => $parameters) {
+            foreach ($parameters as $name => $param) {
+                unset($namespace[$name][$location]);
+                if ($conflicts = array_keys($namespace[$name])) {
+                    $alias = $name.'_'.$location;
+                    $this->debug('! %s parameter "%s" conflicts with %s, address as "%s"', $location, $name, implode(' and ', $conflicts), $alias);
+                    // namespace this property at our end ensuring it's sent to the API as expected.
+                    $param['sentAs'] = $name;
+                    $name = $param['name'] = $alias;
+                }
+                $target[$name] = $param;
             }
         }
         return $target;
@@ -536,7 +554,7 @@ class Swizzle {
      */
     private function transformLocation( $paramType ){
         // Guzzle request locations: (statusCode|reasonPhrase|header|body|json|xml)
-        // Guzzle response locations: (uri|query|header|body|postField|postFile|json|xml|responseBody)
+        // Guzzle response locations: (uri|query|header|body|formParam|multipart|json|xml|responseBody)
         static $valid = array (
             'uri' => 1,
             'xml' => 1,
@@ -544,16 +562,16 @@ class Swizzle {
             'body' => 1,
             'query' => 1,
             'header' => 1,
-            'postField' => 1,
+            'formParam' => 1,
         );
         // may be already transformed and just passing through
         if( isset($valid[$paramType]) ){
             return $paramType;
-        }        
+        }
         static $aliases = array (
             'path' => 'uri',
             'body' => 'body',
-            'form' => 'postField',
+            'form' => 'formParam',
             'query' => 'query',
             'header' => 'header',
         );
@@ -597,7 +615,7 @@ class Swizzle {
 
         // validate Swagger refs now. Resolve later as appropriate.
         if( isset($target['$ref']) ){
-            if( ! $this->getServiceDescription()->getModel($target['$ref']) ){
+            if ($this->hasModel($target['$ref'] === false)) {
                 throw new \Exception('Encountered $ref to "'.$target['$ref'].'" in '.$name.' but model not registered');
             }
             unset( $target['type'] );
@@ -605,7 +623,7 @@ class Swizzle {
         }
 
         // Validate data type
-        $type = '';
+        $type = null;
 
         // handle array of types entities
         if( isset($target['items']) ){
@@ -617,7 +635,7 @@ class Swizzle {
             // resolve model reference ensuring model exists
             if( isset($target['items']['$ref']) ){
                 $ref = $target['items']['$ref'];
-                if( ! $this->getServiceDescription()->getModel($ref) ){
+                if ($this->hasModel($ref) === false) {
                     throw new \Exception('"'.$ref.'" encountered as items $ref but not defined as a model');
                 }
             }
@@ -649,17 +667,17 @@ class Swizzle {
                 }
             }
         }
-        
-        if( ! $type ){
+
+        if( $type === null ){
             $type = $originalType = $target['type'];
-            if( $type && $this->getServiceDescription()->getModel($type) ){
+            if( $type && $this->hasModel($type) ){
                 // param type is registered model
                 $target['$ref'] = $type;
                 unset( $target['type'] );
                 return $target;
             }
             // else handle as primitive type
-            $frmt = isset($target['format']) ? $target['format'] : '';
+            $frmt = isset($target['format']) ? $target['format'] : null;
             $type = $target['type'] = $this->transformSimpleType( $type, $frmt );
             // else fall back to a sensible default
             if( ! $type ){
@@ -672,27 +690,29 @@ class Swizzle {
         if( isset($target['format']) ){
             $target['format'] = $this->transformTypeFormat( $target['format'] );
         }
-        
+
         // ensure properties is set even if empty, which makes little sense.
         if( 'object' === $type && empty($target['properties']) ){
             $this->debug('! object %s has empty properties', $name );
             $target['properties'] = array();
         }
-        
+
         return $target;
     }
-    
-    
-    
+
     /**
      * Transform Swagger simple type to valid JSON Schema type. (which it should be anyway).
+     *
      * @see http://tools.ietf.org/id/draft-zyp-json-schema-04.html#rfc.section.3.5
+     *
      * @param string type specified in swagger field
-     * @param optional format specified in format field
+     * @param string $format optional format specified in format field
+     *
      * @return string one of array boolean integer number null object string
      */
-    private function transformSimpleType( $type, $format = '' ){
-        static $aliases = array (
+    private function transformSimpleType($type, $format = null)
+    {
+        static $aliases = [
             '' => 'null',
             'null' => 'null',
             'void' => 'null',
@@ -712,16 +732,23 @@ class Swizzle {
             'byte' => 'string',
             'date' => 'string',
             'date-time' => 'string',
-        );        
-        $type = isset($aliases[$type]) ? $aliases[$type] : '';
-        if( ! $type && $format ){
+        ];
+//        $type = isset($aliases[$type]) ? $aliases[$type] : '';
+//        if( ! $type && $format ){
+//            $type = isset($aliases[$format]) ? $aliases[$format] : '';
+//        }
+//
+//        return $type;
+        $type = isset($aliases[$type]) ? $aliases[$type] : null;
+        if ($type === null && $format !== null) {
             $type = isset($aliases[$format]) ? $aliases[$format] : '';
         }
+
         return $type;
-    }    
-    
-    
-    
+    }
+
+
+
     /**
      * Transform Swagger's datatype format hinting to Guzzle's
      * @param string Swagger's format field
@@ -734,7 +761,7 @@ class Swizzle {
         );
         // Guzzle supports also time, timestamp, date-time-http but Swagger has no equivalent
         return isset($aliases[$format]) ? $aliases[$format] : '';
-    }    
+    }
 
 
 
@@ -758,29 +785,31 @@ class Swizzle {
         return $errorResponses;
     }
 
-
-
     /**
      * Utility transform an array based on similarities and differences between the two formats.
-     * @param arrray source format (swagger)
-     * @param array keys common to both formats, { key: '', ... }
-     * @param array key translation mappings, { keya: keyb, ... }
+     *
+     * @param arrray $swagger source format (swagger)
+     * @param array $common Keys common to both formats, { key: '', ... }
+     * @param array $trans key translation mappings, { keya: keyb, ... }
+     *
      * @return array target format (guzzle)
      */
-    private function transformArray( array $swagger, array $common, array $trans ){
+    private function transformArray(array $swagger, array $common, array $trans)
+    {
         // initialize with common array keys
-        $guzzle = array_intersect_key( $swagger, $common );
+        $guzzle = array_intersect_key($swagger, $common);
         // translate other naming differences
-        foreach( $trans as $source => $target ){
-            if( isset($swagger[$source]) ){
+        foreach ($trans as $source => $target) {
+            if (isset($swagger[$source])) {
                 $guzzle[$target] = $swagger[$source];
             }
         }
+
         return $guzzle;
     }
-    
-    
-    
+
+
+
     /**
      * Utility, hashes an array into something human readable if less than 32 chars.
      * Example: Use for creating anonymous model names, such as type_string
@@ -803,9 +832,9 @@ class Swizzle {
             return md5( $hash );
         }
         return $hash;
-    }    
-    
-    
+    }
+
+
 
     /**
      * Utility for merging any URI into a fully qualified one
@@ -818,22 +847,38 @@ class Swizzle {
         $base = parse_url($baseUrl);
         $full = $href + $base + parse_url('http://localhost/');
         return $full['scheme'].'://'.$full['host'].$full['path'];
-    }    
+    }
 
-    
-    
     /**
      * Export service description to JSON
+     *
      * @return string
      */
-    public function toJson(){
-        $options = 0;
-        if( defined('JSON_PRETTY_PRINT') ){
-            $options |= JSON_PRETTY_PRINT; // <- PHP>=5.4.0
+    public function toJson()
+    {
+        return json_encode($this->toArray(), JSON_PRETTY_PRINT);
+    }
+
+    /**
+     * Export service description to JSON
+     *
+     * @return string
+     */
+    public function toArray()
+    {
+        $result = [
+            'name' => $this->init['name'],
+            'apiVersion' => $this->init['apiVersion'],
+            'baseUri' => $this->init['baseUri'],
+            'description' => $this->init['description'],
+        ];
+        $result['operations'] = $this->operations;
+        if (!empty($this->models)) {
+            $result['models'] = $this->models;
         }
-        $service = $this->getServiceDescription();
-        return json_encode( $service->toArray(), $options );
-    }    
+
+        return array_filter($result);
+    }
 
 
 
@@ -845,9 +890,24 @@ class Swizzle {
         $service = $this->getServiceDescription();
         $comment = sprintf("/**\n * Auto-generated with Swizzle at %s\n */", date('Y-m-d H:i:s O') );
         $source = var_export( $service->toArray(), 1 );
-        return "<?php\n".$comment."\nreturn ".$source.";\n"; 
-    }    
+        return "<?php\n".$comment."\nreturn ".$source.";\n";
+    }
 
-    
+
+
+
+    /**
+     * Check if the service description has a model by name.
+     *
+     * @param string $id Name/ID of the model to check
+     *
+     * @return bool
+     */
+    protected function hasModel($id)
+    {
+        return isset($this->models[$id]);
+    }
+
+
 }
 

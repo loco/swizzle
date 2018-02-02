@@ -1,20 +1,23 @@
 <?php
-namespace Loco\Utils\Swizzle;
 
-use Guzzle\Common\Collection;
+namespace Loco\Utils\Swizzle;
 
 /**
  * Sorts models by dependency order
  */
-class ModelCollection extends Collection {
-    
+class ModelCollection implements \IteratorAggregate
+{
+    /**
+     * @var array
+     */
+    protected $data = [];
+
     /**
      * Construct collection from models indexed by name
      * @param array $models Associative array of data to set
      * @throws \Exception if circular references cannot be resolved.
      */
     public function __construct( array $models = array() ){
-        parent::__construct();
         // build dependency graph and add missing id properties
         $graph = array();
         foreach( $models as $id => $model ){
@@ -45,8 +48,49 @@ class ModelCollection extends Collection {
             }
         }
     }
+    /**
+     * Test if key was found in original JSON, even if empty
+     *
+     * @param string $key
+     *
+     * @return bool
+     */
+    protected function has($key)
+    {
+        return isset($this->data[$key]) || array_key_exists($key, $this->data);
+    }
 
+    /**
+     * Get raw data value
+     *
+     * @param string $key
+     *
+     * @return mixed
+     */
+    protected function get($key)
+    {
+        return isset($this->data[$key]) ? $this->data[$key] : null;
+    }
 
+    /**
+     * Get raw data value
+     *
+     * @param string $key
+     * @param mixed $value
+     *
+     * @return ModelCollection
+     */
+    protected function set($key, $value)
+    {
+        $this->data[$key] = $value;
+
+        return $this;
+    }
+
+    public function getIterator()
+    {
+        return new \ArrayIterator($this->data);
+    }
 
     /**
      * @ignore 

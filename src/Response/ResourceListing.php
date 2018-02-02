@@ -1,36 +1,21 @@
 <?php
+
 namespace Loco\Utils\Swizzle\Response;
-
-use Guzzle\Service\Command\OperationCommand;
-
 
 /**
  * Response class for Swagger resource listing
  */
-class ResourceListing extends BaseResponse {
-
-
-    /**
-     * Create a response model object from a completed command
-     * @internal 
-     * @param OperationCommand Command that serialized the request
-     * @throws \Guzzle\Http\Exception\BadResponseException 
-     * @return ResourceListing
-     */
-    public static function fromCommand( OperationCommand $command ) {
-        return new ResourceListing( $command->getResponse() );
-    }
-    
-    
+class ResourceListing extends BaseResponse
+{
     /**
      * Get info field, comprising title and description
      * @return array
      */
-    public function getInfo(){
-        $defaults = array( 'title' => '', 'description' => '' );
-        $info = $this->get('info')?:array();
-        return array_intersect_key( $info, $defaults ) + $defaults;
-    }     
-    
-    
+    public function getInfo()
+    {
+        $defaults = ['title' => '', 'description' => ''];
+        $info = $this->get('info') ?: [];
+        return array_intersect_key($info, $defaults) + $defaults;
+    }
+
 }

@@ -1,20 +1,23 @@
 {
     "name": "swagger-docs",
     "apiVersion": "1.0",
-    "baseUrl" : "",
+    "baseUri" : "",
     "description": "Swagger Docs Client",
     "operations" : {
         "getResources" : {
             "summary:": "Get swagger Resource Listing",
             "uri" : "",
             "httpMethod": "GET",
+            "responseModel" : "getResponse",
             "responseType": "class",
             "responseClass" : "Loco\\Utils\\Swizzle\\Response\\ResourceListing"
+
         },
         "getDeclaration" : {
             "summary:": "Get swagger API Declaration",
-            "uri" : "{path}",
+            "uri" : "{+path}",
             "httpMethod": "GET",
+            "responseModel" : "getResponse",
             "responseType": "class",
             "responseClass" : "Loco\\Utils\\Swizzle\\Response\\ApiDeclaration",
             "parameters": {
@@ -23,6 +26,14 @@
                     "required": true,
                     "location": "uri"
                 }
+            }
+        }
+    },
+    "models": {
+        "getResponse": {
+            "type": "object",
+            "additionalProperties": {
+                "location": "json"
             }
         }
     }
