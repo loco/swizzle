@@ -23,6 +23,11 @@
             "Loco\\Utils\\Swizzle\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Loco\\Tests\\Utils\\Swizzle\\": "tests/Tests"
+        }
+    },
     "extra": {
         "branch-alias": {
             "dev-master": "1.0.x-dev"
