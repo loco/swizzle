@@ -25,7 +25,7 @@ class PetstoreTest extends \PHPUnit_Framework_TestCase {
         $builder = new Swizzle( 'pets', 'Swagger Pet store' );
         //$builder->verbose( STDERR );
         $builder->registerCommandClass( '', '\\Loco\\Utils\\Swizzle\\Command\\StrictCommand' );
-        $builder->setBaseUrl('http://petstore.swagger.wordnik.com/api');
+        $builder->setBaseUri('http://petstore.swagger.wordnik.com/api');
         $builder->build('http://petstore.swagger.wordnik.com/api/api-docs');
         //die( $builder->toJson() );
         $service = $builder->getServiceDescription();
