@@ -615,7 +615,7 @@ class Swizzle {
 
         // validate Swagger refs now. Resolve later as appropriate.
         if( isset($target['$ref']) ){
-            if ($this->hasModel($target['$ref'] === false)) {
+            if ($this->hasModel($target['$ref']) === false) {
                 throw new \Exception('Encountered $ref to "'.$target['$ref'].'" in '.$name.' but model not registered');
             }
             unset( $target['type'] );
