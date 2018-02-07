@@ -322,6 +322,7 @@ class Swizzle
      * @param string location where parameters will be found in request or response
      *
      * @return Parameter model resolved against service description but not added
+     *
      * @throws \Exception
      */
     private function createModel(array $model, $location)
@@ -440,32 +441,24 @@ class Swizzle
                 // Check for primitive values first
                 $type = $this->transformSimpleType($config['responseType']) ?: $type = $config['responseType'];
 
-                // Array primitive may be typed with 'items' spec, but Guzzle operation ignores at top level
                 if ('array' === $type) {
+                    // Array primitive may be typed with 'items' spec, but Guzzle operation ignores at top level
                     if (isset($operationData['items'])) {
                         $this->debug("! no modelling support for root arrays. Item types won't be validated");
                     }
-                }
-                // Root objects must be declared as models in Guzzle. 
-                // i.e "object" is not a valid primitive for responseClass
-                else {
-                    if ('object' === $type) {
-                        $model = $this->addModel($operationData);
-                        $type = $model->getName();
-                    }
+                } elseif ('object' === $type) {
+                    // Root objects must be declared as models in Guzzle.
+                    // i.e "object" is not a valid primitive for responseClass
+                    $model = $this->addModel($operationData);
+                    $type = $model->getName();
+                } elseif ('number' === $type) {
                     // allowed responseClass primitives are 'array', 'boolean', 'string', 'integer' and ''
                     // That leaves just "number" and "null" as unsupported from the core 7 types in json schema.
-                    else {
-                        if ('number' === $type) {
-                            $this->debug('! number type defaulted to string as responseClass');
-                            $type = 'string';
-                        } else {
-                            if ('null' === $type) {
-                                $this->debug('! empty type "%s" defaulted to empty responseClass', $config['responseType']);
-                                $type = '';
-                            }
-                        }
-                    }
+                    $this->debug('! number type defaulted to string as responseClass');
+                    $type = 'string';
+                } elseif ('null' === $type) {
+                    $this->debug('! empty type "%s" defaulted to empty responseClass', $config['responseType']);
+                    $type = '';
                 }
 
                 // Ensure service contructor calls inferResponseType by having class but no type
