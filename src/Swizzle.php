@@ -355,8 +355,7 @@ class Swizzle
                 $data['properties'][$key]['location'] = $location;
             }
         } elseif ('array' === $data['type']) {
-            // @todo put location on each property within each item as per GetUsersOutput example on Guzzle site.
-            // @see https://github.com/guzzle/guzzle/issues/560
+            $data['location'] = $location;
         }
 
         // required makes no sense at root of model
