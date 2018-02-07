@@ -327,8 +327,18 @@ class Swizzle
      */
     private function createModel(array $model, $location)
     {
-        $name = isset($model['id']) ? trim($model['id']) : null;
-        if (empty($name)) {
+        $name = null;
+        if (isset($model['id']) === true) {
+            // if model id is set, us it as a name
+            $name = trim($model['id']);
+        } elseif (isset($model['type']) && $model['type'] === 'array' && isset($model['nickname'])) {
+            // if model is of array type, generate it's name from operation nickname (e.g. getTags -> TagList)
+            $found = preg_match('/[A-Z]/', $model['nickname'], $matches, PREG_OFFSET_CAPTURE);
+            if ($found === 1) {
+                $name = rtrim(substr($model['nickname'], $matches[0][1]), 's').'List';
+            }
+        }
+        if ($name === null) {
             $name = $model['id'] = 'anon_'.self::hashArray($model);
         }
         // a model is basically a parameter, but has name property added
@@ -336,6 +346,7 @@ class Swizzle
             'name' => $name,
             'type' => 'object',
         ];
+        /** @noinspection AdditionOperationOnArraysInspection */
         $data = $this->transformSchema($model + $defaults);
         if ('object' === $data['type']) {
             $data['additionalProperties'] = false;
@@ -414,6 +425,7 @@ class Swizzle
         ];
         /** @var array[][] $api */
         foreach ($api['operations'] as $operationData) {
+            /** @noinspection AdditionOperationOnArraysInspection */
             $config = $this->transformArray($operationData, $common, $trans) + $defaults;
             $config['uri'] = $uri;
             // command must have a name, and must be unique across methods
