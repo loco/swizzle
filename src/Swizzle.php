@@ -341,6 +341,7 @@ class Swizzle
         if ($name === null) {
             $name = $model['id'] = 'anon_'.self::hashArray($model);
         }
+
         // a model is basically a parameter, but has name property added
         $defaults = [
             'name' => $name,
@@ -351,7 +352,7 @@ class Swizzle
         if ('object' === $data['type']) {
             $data['additionalProperties'] = false;
             // model must have top level properties specified as serialized response type, but no response type itself
-            foreach ($data['properties'] as $key => $prop) {
+            foreach ($data['properties'] as $key => $property) {
                 $data['properties'][$key]['location'] = $location;
             }
         } elseif ('array' === $data['type']) {
@@ -450,7 +451,7 @@ class Swizzle
             } elseif (isset($config['responseType'])) { // handle response type if defined
 
                 // Check for primitive values first
-                $type = $this->transformSimpleType($config['responseType']) ?: $type = $config['responseType'];
+                $type = $this->transformSimpleType($config['responseType']) ?: $config['responseType'];
 
                 if ($type === 'array' || $type === 'object') {
                     $model = $this->addModel($operationData);
@@ -462,12 +463,14 @@ class Swizzle
                     $type = 'string';
                 } elseif ('null' === $type) {
                     $this->debug('! empty type "%s" defaulted to empty responseClass', $config['responseType']);
-                    $type = '';
+                    $type = null;
                 }
 
                 // Ensure service contructor calls inferResponseType by having class but no type
                 // This will handle Guzzle primatives, models and fall back to class
-                $config['responseModel'] = $type;
+                if ($type !== null) {
+                    $config['responseModel'] = $type;
+                }
                 unset($config['responseType']);
             }
 
@@ -743,7 +746,8 @@ class Swizzle
      * @param string type specified in swagger field
      * @param string $format optional format specified in format field
      *
-     * @return string one of array boolean integer number null object string
+     * @return string|null One of: array, boolean, integer, number, null, object, string
+     * or NULL if unable to match type.
      */
     private function transformSimpleType($type, $format = null)
     {
@@ -768,15 +772,10 @@ class Swizzle
             'date' => 'string',
             'date-time' => 'string',
         ];
-//        $type = isset($aliases[$type]) ? $aliases[$type] : '';
-//        if( ! $type && $format ){
-//            $type = isset($aliases[$format]) ? $aliases[$format] : '';
-//        }
-//
-//        return $type;
+
         $type = isset($aliases[$type]) ? $aliases[$type] : null;
         if ($type === null && $format !== null) {
-            $type = isset($aliases[$format]) ? $aliases[$format] : '';
+            $type = isset($aliases[$format]) ? $aliases[$format] : null;
         }
 
         return $type;
