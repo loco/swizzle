@@ -442,10 +442,8 @@ class Swizzle
                 $type = $this->transformSimpleType($config['responseType']) ?: $type = $config['responseType'];
 
                 if ('array' === $type) {
-                    // Array primitive may be typed with 'items' spec, but Guzzle operation ignores at top level
-                    if (isset($operationData['items'])) {
-                        $this->debug("! no modelling support for root arrays. Item types won't be validated");
-                    }
+                    $model = $this->addModel($operationData);
+                    $type = $model->getName();
                 } elseif ('object' === $type) {
                     // Root objects must be declared as models in Guzzle.
                     // i.e "object" is not a valid primitive for responseClass
