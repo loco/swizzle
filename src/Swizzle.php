@@ -441,12 +441,7 @@ class Swizzle
                 // Check for primitive values first
                 $type = $this->transformSimpleType($config['responseType']) ?: $type = $config['responseType'];
 
-                if ('array' === $type) {
-                    $model = $this->addModel($operationData);
-                    $type = $model->getName();
-                } elseif ('object' === $type) {
-                    // Root objects must be declared as models in Guzzle.
-                    // i.e "object" is not a valid primitive for responseClass
+                if ($type === 'array' || $type === 'object') {
                     $model = $this->addModel($operationData);
                     $type = $model->getName();
                 } elseif ('number' === $type) {
