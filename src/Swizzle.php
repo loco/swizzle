@@ -374,12 +374,16 @@ class Swizzle
      *
      * @throws \Exception
      */
-    public function addModel(array $model)
+    public function addModel(array $modelData)
     {
         // swagger only has locations for requests, so we can safely default to our response serializer.
-        $model = $this->createModel($model, $this->responseType);
+        $model = $this->createModel($modelData, $this->responseType);
+        $modelData = $model->toArray();
+        if ($modelData['type'] === 'array' && isset($modelData['name'])) {
+            unset($modelData['name']);
+        }
         $this->debug('+ adding model %s', $model->getName());
-        $this->models[$model->getName()] = $model->toArray();
+        $this->models[$model->getName()] = $modelData;
 
         return $model;
     }
