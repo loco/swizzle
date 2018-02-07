@@ -453,22 +453,11 @@ class Swizzle
                 // Check for primitive values first
                 $type = $this->transformSimpleType($config['responseType']) ?: $config['responseType'];
 
-                if ($type === 'array' || $type === 'object') {
+                if ($type !== 'null' && $type !== $config['responseType']) {
+                    // If response type is defined, there should always be a responseModel, not a primitive type.
+                    // Response model itself can represent a primitive type
                     $model = $this->addModel($operationData);
                     $type = $model->getName();
-                } elseif ('number' === $type) {
-                    // allowed responseClass primitives are 'array', 'boolean', 'string', 'integer' and ''
-                    // That leaves just "number" and "null" as unsupported from the core 7 types in json schema.
-                    $this->debug('! number type defaulted to string as responseClass');
-                    $type = 'string';
-                } elseif ('null' === $type) {
-                    $this->debug('! empty type "%s" defaulted to empty responseClass', $config['responseType']);
-                    $type = null;
-                }
-
-                // Ensure service contructor calls inferResponseType by having class but no type
-                // This will handle Guzzle primatives, models and fall back to class
-                if ($type !== null) {
                     $config['responseModel'] = $type;
                 }
                 unset($config['responseType']);
