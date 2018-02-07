@@ -455,9 +455,9 @@ class Swizzle
             } elseif (isset($config['responseType'])) { // handle response type if defined
 
                 // Check for primitive values first
-                $type = $this->transformSimpleType($config['responseType']) ?: $config['responseType'];
+                $type = $this->transformSimpleType($config['responseType']);
 
-                if ($type !== 'null' && $type !== $config['responseType']) {
+                if ($type !== null && $type !== 'null') {
                     // If response type is defined, there should always be a responseModel, not a primitive type.
                     // Response model itself can represent a primitive type
                     $model = $this->addModel($operationData);
@@ -673,11 +673,14 @@ class Swizzle
             // Else define a literal model definition on the fly. 
             // Guzzle will resolve back to literals on output, but it helps us resolve typed arrays and such
             else {
-                //$target['items'] = $this->transformSchema( $target['items'] );
-                $model = $this->addModel($target['items']);
-                $target['items'] = [
-                    '$ref' => $model->getName(),
-                ];
+                if (isset($target['items']['type']) && $this->transformSimpleType($target['items']['type']) !== null) {
+                    $target['items'] = $this->transformSchema($target['items']);
+                } else {
+                    $model = $this->addModel($target['items']);
+                    $target['items'] = [
+                        '$ref' => $model->getName(),
+                    ];
+                }
             }
         }
 
