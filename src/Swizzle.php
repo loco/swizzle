@@ -926,21 +926,6 @@ class Swizzle
     }
 
     /**
-     * Export service description to PHP array
-     *
-     * @return string
-     *
-     * @throws \InvalidArgumentException
-     */
-    public function export()
-    {
-        $service = $this->getServiceDescription();
-        $comment = sprintf("/**\n * Auto-generated with Swizzle at %s\n */", date('Y-m-d H:i:s O'));
-        $source = var_export($service->toArray(), 1);
-        return "<?php\n".$comment."\nreturn ".$source.";\n";
-    }
-
-    /**
      * Check if the service description has a model by name.
      *
      * @param string $id Name/ID of the model to check
