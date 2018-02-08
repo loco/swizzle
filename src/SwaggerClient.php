@@ -27,15 +27,15 @@ class SwaggerClient extends GuzzleClient
     public static function factory(array $config = [])
     {
         // Swagger docs URI is required
-        $required = ['baseUri'];
+        $required = ['base_uri'];
         if ($missing = array_diff($required, array_keys($config))) {
             throw new \InvalidArgumentException('Config is missing the following keys: '.implode(', ', $missing));
         }
 
         $serviceConfig = json_decode(file_get_contents(__DIR__.'/Resources/service.json'), true);
         // allow override of base_uri after it's been set by service description
-        if (isset($config['baseUri'])) {
-            $serviceConfig['baseUri'] = $config['baseUri'];
+        if (isset($config['base_uri'])) {
+            $serviceConfig['baseUri'] = $config['base_uri'];
         }
         // describe service from included config file.
         $description = new Description($serviceConfig);

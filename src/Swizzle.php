@@ -234,7 +234,7 @@ class Swizzle
     public function build($baseUri)
     {
         $this->serviceDescription = null;
-        $client = SwaggerClient::factory(compact('baseUri'));
+        $client = SwaggerClient::factory(['base_uri' => $baseUri]);
         $this->debug('Fetching resource listing from %s', $baseUri);
         $result = $client->getResources();
         $listing = new ResourceListing($result->toArray());
