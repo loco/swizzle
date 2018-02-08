@@ -8,18 +8,13 @@
             "summary:": "Get swagger Resource Listing",
             "uri" : "",
             "httpMethod": "GET",
-            "responseModel" : "getResponse",
-            "responseType": "class",
-            "responseClass" : "Loco\\Utils\\Swizzle\\Response\\ResourceListing"
-
+            "responseModel" : "getResponse"
         },
         "getDeclaration" : {
             "summary:": "Get swagger API Declaration",
             "uri" : "{+path}",
             "httpMethod": "GET",
             "responseModel" : "getResponse",
-            "responseType": "class",
-            "responseClass" : "Loco\\Utils\\Swizzle\\Response\\ApiDeclaration",
             "parameters": {
                 "path" : {
                     "description": "Path to declaration endpoint",
