@@ -224,31 +224,6 @@ class Swizzle
     }
 
     /**
-     * Apply a bespoke operation command class to a given method, or all methods
-     *
-     * @param string name of command using this class, or "" for all.
-     * @param string full class name for operation class field
-     *
-     * @return Swizzle
-     *
-     * @throws \Exception
-     */
-    public function registerCommandClass($name, $class)
-    {
-        $this->commandClasses[$name] = $class;
-        // set retrospectively if method already encountered
-        if (
-            $this->serviceDescription instanceof Description
-            && $this->serviceDescription->hasOperation($name) === true
-        ) {
-            $this->serviceDescription->getOperation($name)->setClass($class);
-//            throw new \Exception('Too late to register a global command class');
-        }
-
-        return $this;
-    }
-
-    /**
      * Build from a live endpoint
      *
      * @param string Swagger compliant JSON endpoint for resource listing
@@ -491,9 +466,7 @@ class Swizzle
 //                    throw new \Exception('responseType defaulted to class "'.$class.'" but class not registered');
 //                }
 //            }
-//            $service->addOperation( $operation );
             $this->operations[$operation->getName()] = $operation->toArray();
-            // next operation -
         }
         return $this;
     }
@@ -516,7 +489,6 @@ class Swizzle
             } else {
                 $param['name'] = $name;
             }
-            /** @var array[][] $param */
             $param = $this->transformSchema($param);
             $location = isset($param['location']) ? $param['location'] : '';
             // resolve models immediately. Guzzle will resolve anyway and we need the data for request body transforms
@@ -535,6 +507,7 @@ class Swizzle
             if ('body' === $location) {
                 $location = $this->requestType;
                 // objects properties must be moved into parent namespace or Guzzle will wrap them.
+                /** @var array[] $param */
                 if (isset($param['properties'])) {
                     foreach ($param['properties'] as $propertyName => $property) {
                         $property['location'] = $location;
@@ -647,7 +620,7 @@ class Swizzle
         // validate Swagger refs now. Resolve later as appropriate.
         if (isset($target['$ref'])) {
             if ($this->hasModel($target['$ref']) === false) {
-                throw new \Exception('Encountered $ref to "'.$target['$ref'].'" in '.$name.' but model not registered');
+                throw new \RuntimeException('Encountered $ref to "'.$target['$ref'].'" in '.$name.' but model not registered');
             }
             unset($target['type']);
             return $target;
@@ -667,7 +640,7 @@ class Swizzle
             if (isset($target['items']['$ref'])) {
                 $ref = $target['items']['$ref'];
                 if ($this->hasModel($ref) === false) {
-                    throw new \Exception('"'.$ref.'" encountered as items $ref but not defined as a model');
+                    throw new \RuntimeException('"'.$ref.'" encountered as items $ref but not defined as a model');
                 }
             }
             // Else define a literal model definition on the fly. 
