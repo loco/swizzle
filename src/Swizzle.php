@@ -166,7 +166,7 @@ class Swizzle
      *
      * @throws \RuntimeException
      */
-    public function setBaseUril($baseUri)
+    public function setBaseUri($baseUri)
     {
         return $this->setInitValue('baseUri', $baseUri);
     }
@@ -828,7 +828,7 @@ class Swizzle
         foreach ($arr as $key => $val) {
             $words[] = $key;
             if (is_array($val)) {
-                $words = self::hashArray($val, $words, true);
+                $words[] = self::hashArray($val, $words, true);
             } else {
                 $words[] = (string)$val;
             }
