@@ -216,29 +216,35 @@ class ModelTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * #depends testClientConstruct
-     * https://github.com/guzzle/guzzle/issues/581
-     *
-    public function testModelRecursion( Client $client ){
+     * @see https://github.com/guzzle/guzzle/issues/581
+     */
+    public function testModelRecursion()
+    {
         // define a model with a property that is a list of the same model
-        $raw = array (
-          'name' => 'TestRecursion',
-          'type' => 'object',
-          'properties' => array(
-            'recurse' => array(
-              'type' => 'array',
-              'items' => array(
-                '$ref' => 'TestRecursion',
-              ),
-            ),
-          ),
-        );
-        $desc = $client->getServiceDescription();
-        $model = new Parameter( $raw, $desc );
-        //$model->toArray(); // <- [1] call this now leaves items empty
-        $desc->addModel( $model );
-        $model->toArray(); // <- [2] this would infinitely loop without call [1]
-    }*/
+        $modelData = [
+            'name' => 'TestRecursion',
+            'type' => 'object',
+            'properties' => [
+                'recurse' => [
+                    'type' => 'array',
+                    'items' => [
+                        '$ref' => 'TestRecursion',
+                    ],
+                ],
+            ],
+        ];
+
+        $desc = new Description([
+            'models' => [
+                'TestRecursion' => $modelData
+            ],
+        ]);
+        $model = $desc->getModel('TestRecursion');
+        $this->assertInstanceOf(Parameter::class, $model);
+        $dump = $model->toArray();
+
+        $this->assertEquals($modelData, $dump);
+    }
 
 }
 
