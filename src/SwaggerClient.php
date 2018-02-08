@@ -10,8 +10,8 @@ use GuzzleHttp\Command\Result;
 /**
  * Client for pulling Swagger docs
  *
- * @method Result getResources(array $args)
- * @method Result getDeclaration(array $args)
+ * @method Result getResources(array $args = [])
+ * @method Result getDeclaration(array $args = [])
  */
 class SwaggerClient extends GuzzleClient
 {
