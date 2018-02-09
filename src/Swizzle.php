@@ -82,9 +82,9 @@ class Swizzle
     /**
      * Construct with minimum mandatory parameters
      *
-     * @param string Name of the API
-     * @param string Summary of the API
-     * @param string API version
+     * @param string $name Name of the API
+     * @param string $description Summary of the API
+     * @param string $apiVersion API version
      *
      * @throws \Exception
      */

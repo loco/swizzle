@@ -5,13 +5,14 @@ namespace Loco\Utils\Swizzle;
 use GuzzleHttp\Client;
 use GuzzleHttp\Command\Guzzle\Description;
 use GuzzleHttp\Command\Guzzle\GuzzleClient;
-use GuzzleHttp\Command\Result;
+use Loco\Utils\Swizzle\Result\ApiDeclaration;
+use Loco\Utils\Swizzle\Result\ResourceListing;
 
 /**
  * Client for pulling Swagger docs
  *
- * @method Result getResources(array $args = [])
- * @method Result getDeclaration(array $args = [])
+ * @method ResourceListing getResources(array $args = [])
+ * @method ApiDeclaration getDeclaration(array $args = [])
  */
 class SwaggerClient extends GuzzleClient
 {

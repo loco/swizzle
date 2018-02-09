@@ -19,7 +19,7 @@ class ModelCollection implements \IteratorAggregate
      *
      * @param array $models Associative array of data to set
      *
-     * @throws \Exception if circular references cannot be resolved.
+     * @throws CircularReferenceException if circular references cannot be resolved.
      */
     public function __construct(array $models = [])
     {
