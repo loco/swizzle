@@ -5,8 +5,8 @@ namespace Loco\Utils\Swizzle;
 use GuzzleHttp\Command\Guzzle\Description;
 use GuzzleHttp\Command\Guzzle\Operation;
 use GuzzleHttp\Command\Guzzle\Parameter;
-use Loco\Utils\Swizzle\Response\ApiDeclaration;
-use Loco\Utils\Swizzle\Response\ResourceListing;
+use Loco\Utils\Swizzle\Result\ApiDeclaration;
+use Loco\Utils\Swizzle\Result\ResourceListing;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 
@@ -236,8 +236,7 @@ class Swizzle
         $this->serviceDescription = null;
         $client = SwaggerClient::factory(['base_uri' => $baseUri]);
         $this->debug('Fetching resource listing from %s', $baseUri);
-        $result = $client->getResources();
-        $listing = new ResourceListing($result->toArray());
+        $listing = $client->getResources();
 
         // check this looks like a resource listing
         if (!$listing->isSwagger()) {
@@ -274,8 +273,7 @@ class Swizzle
             // @todo do proper path resolution here, allowing a cross-domain spec.
             $path = rtrim(parse_url($baseUri)['path'], '/').'/'.ltrim($path, '/');
             $this->debug('pulling %s ...', $path);
-            $declaration = $client->getDeclaration(compact('path'));
-            $apiDeclaration = new ApiDeclaration($declaration->toArray());
+            $apiDeclaration = $client->getDeclaration(compact('path'));
             foreach ($apiDeclaration->getModels() as $model) {
                 $this->addModel($model);
             }
