@@ -1,10 +1,7 @@
 <?php
 
-namespace Loco\Utils\Swizzle\Response;
+namespace Loco\Utils\Swizzle\Result;
 
-use Guzzle\Http\Message\Response;
-use Guzzle\Service\Command\OperationCommand;
-use Guzzle\Service\Command\ResponseClassInterface;
 use GuzzleHttp\Command\Result;
 
 /**
@@ -94,5 +91,3 @@ abstract class BaseResponse extends Result
     }
 
 }
-
-

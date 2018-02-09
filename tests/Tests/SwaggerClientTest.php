@@ -2,131 +2,137 @@
 
 namespace Loco\Tests\Utils\Swizzle;
 
-use Guzzle\Tests\GuzzleTestCase;
-use Guzzle\Service\Builder\ServiceBuilder;
-use Guzzle\Http\Message\Response;
-use Guzzle\Plugin\Mock\MockPlugin;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\Psr7\Response;
+use Loco\Utils\Swizzle\Result\ApiDeclaration;
+use Loco\Utils\Swizzle\Result\ResourceListing;
 use Loco\Utils\Swizzle\SwaggerClient;
 
 /**
  * Tests SwaggerClient
  * @group swagger
  */
-class SwaggerClientTest extends GuzzleTestCase {
-    
+class SwaggerClientTest extends \PHPUnit_Framework_TestCase
+{
+    const BASE_URI = 'https://localise.biz/api/docs';
+
     /**
      * Mock resource listing JSON
      * @var string
      */
     private $resourcesJson;
-    
+
     /**
      * Mock API declaration JSON
      * @var string
      */
     private $declarationJson;
-    
+
     /**
      * Set up test with a fake Api consisting of a single /ping method
      */
-    public function setUp(){
+    public function setUp()
+    {
         // define fake resource listing
-        $this->resourcesJson = json_encode( array (
+        $this->resourcesJson = json_encode([
             'apiVersion' => '1.0',
-            'apis' => array(
-                array (
+            'apis' => [
+                [
                     'path' => '/ping',
-                ),
-            ),
-        ) );
+                ],
+            ],
+        ]);
         // define fake /test endpoint
-        $this->declarationJson = json_encode( array(
+        $this->declarationJson = json_encode([
             'resourcePath' => '/ping',
             // single api with a single operation
-            'apis' => array(
-                array (
+            'apis' => [
+                [
                     'path' => '/ping',
-                    'operations' => array(
-                        array(
+                    'operations' => [
+                        [
                             'method' => 'GET',
                             'nickname' => 'ping',
                             'type' => 'Echo',
-                        ),
-                    ),
-                ),
-            ),
+                        ],
+                    ],
+                ],
+            ],
             // single Echo model that would look like { "pong" : "" }
-            'models' => array (
-                'Echo' => array (
+            'models' => [
+                'Echo' => [
                     'id' => 'Echo',
-                    'properties' => array (
-                        'pong' => array (
+                    'properties' => [
+                        'pong' => [
                             'type' => 'string',
-                        ),
-                    ),
-                ),
-            ),
-        ) );
+                        ],
+                    ],
+                ],
+            ],
+        ]);
     }
-    
-    
-    
+
+    private function createClient(array $config = [])
+    {
+        $defaults = [
+            'base_uri' => 'https://localise.biz/api/docs'
+        ];
+        /** @noinspection AdditionOperationOnArraysInspection */
+        return SwaggerClient::factory($config + $defaults);
+
+    }
+
     /**
-     * @covers Loco\Utils\Swizzle\SwaggerClient::factory
-     * @returns SwaggerClient
+     * @covers \Loco\Utils\Swizzle\SwaggerClient::factory
      */
-    public function testFactory(){
-        $base_url = 'https://localise.biz/api/docs';
-        $client = SwaggerClient::factory( compact('base_url') );
-        $this->assertEquals( $base_url, $client->getBaseUrl(), 'base_url not passed to client' );
-        return $client;
+    public function testFactory()
+    {
+        $client = $this->createClient();
+        $this->assertEquals(static::BASE_URI, $client->getDescription()->getBaseUri()->__toString(), 'base_url not passed to description');
+        $this->assertTrue(isset($client->getHttpClient()->getConfig()['base_uri']));
+        $this->assertEquals(static::BASE_URI, $client->getHttpClient()->getConfig()['base_uri'], 'base_url not passed to client');
     }
-    
-    
-    
+
     /**
      * @group mock
-     * @depends testFactory
-     * @returns SwaggerClient
      */
-    public function testMockResourceListing( SwaggerClient $client ){
-        $plugin = new MockPlugin();
-        $plugin->addResponse( new Response( 200, array(), $this->resourcesJson ) );
-        $client->addSubscriber( $plugin );
+    public function testMockResourceListing()
+    {
+        $response = new Response(200, [], $this->resourcesJson);
+        $handlerStack = MockHandler::createWithMiddleware([$response]);
+        $client = $this->createClient(['handler' => $handlerStack]);
+
+        /** @var ResourceListing $listing */
         $listing = $client->getResources();
-        $this->assertInstanceOf('\Loco\Utils\Swizzle\Response\ResourceListing', $listing );
-        $this->assertEquals( '1.0', $listing->getApiVersion() );
+        $this->assertInstanceOf(ResourceListing::class, $listing);
+        $this->assertEquals('1.0', $listing->getApiVersion());
         $paths = $listing->getApiPaths();
-        $this->assertcount( 1, $paths );
-        $this->assertEquals( '/ping', $paths[0] );
-    }    
-
-
+        $this->assertCount(1, $paths);
+        $this->assertEquals('/ping', $paths[0]);
+    }
 
     /**
      * @group mock
-     * @depends testFactory
-     * @returns SwaggerClient
+     * @throws \Loco\Utils\Swizzle\Exception\CircularReferenceException
      */
-    public function testMockApiDeclaration( SwaggerClient $client ){
-        $plugin = new MockPlugin();
-        $plugin->addResponse( new Response( 200, array(), $this->declarationJson ) );
-        $client->addSubscriber( $plugin );
-        $declaration = $client->getDeclaration( array(
+    public function testMockApiDeclaration()
+    {
+        $response = new Response(200, [], $this->declarationJson);
+        $handlerStack = MockHandler::createWithMiddleware([$response]);
+        $client = $this->createClient(['handler' => $handlerStack]);
+
+        $declaration = $client->getDeclaration([
             'path' => '/ping',
-        ) );
-        $this->assertInstanceOf('\Loco\Utils\Swizzle\Response\ApiDeclaration', $declaration );
-        $this->assertEquals( '/ping', $declaration->getResourcePath() );
+        ]);
+        $this->assertInstanceOf(ApiDeclaration::class, $declaration);
+        $this->assertEquals('/ping', $declaration->getResourcePath());
         // Should have one API
         $apis = $declaration->getApis();
-        $this->assertCount( 1, $apis );
+        $this->assertCount(1, $apis);
         // Should have one model
         $models = $declaration->getModels();
-        $this->assertCount( 1, $models );
-        $this->assertArrayHasKey( 'Echo', $models->toArray() );
-    }    
-    
-    
-        
+        $this->assertCount(1, $models);
+        $this->assertArrayHasKey('Echo', $models->getData());
+    }
 
 }

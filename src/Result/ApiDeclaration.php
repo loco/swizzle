@@ -1,6 +1,6 @@
 <?php
 
-namespace Loco\Utils\Swizzle\Response;
+namespace Loco\Utils\Swizzle\Result;
 
 use Loco\Utils\Swizzle\ModelCollection;
 
@@ -33,7 +33,7 @@ class ApiDeclaration extends BaseResponse
      * Get model definitions
      *
      * @return ModelCollection
-     * @throws \Exception
+     * @throws \Loco\Utils\Swizzle\Exception\CircularReferenceException
      */
     public function getModels()
     {

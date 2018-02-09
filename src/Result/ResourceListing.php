@@ -1,6 +1,6 @@
 <?php
 
-namespace Loco\Utils\Swizzle\Response;
+namespace Loco\Utils\Swizzle\Result;
 
 /**
  * Response class for Swagger resource listing

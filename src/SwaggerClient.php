@@ -48,7 +48,12 @@ class SwaggerClient extends GuzzleClient
         $client = new Client($config);
 
         // Create a new instance of self
-        return new self($client, $description);
+        return new self(
+            $client,
+            $description,
+            null,
+            new Deserializer($description, true)
+        );
     }
 
 }

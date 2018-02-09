@@ -9,7 +9,7 @@ use GuzzleHttp\Command\Guzzle\Parameter;
 use GuzzleHttp\Command\Result;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\Psr7\Response;
-use Loco\Utils\Swizzle\StrictDeserializer;
+use Loco\Utils\Swizzle\Deserializer;
 
 /**
  * Tests Guzzle's internal modelling logic.
@@ -106,7 +106,7 @@ class ModelTest extends \PHPUnit_Framework_TestCase
             new Client($httpClientConfig),
             static::$serviceDescription,
             null,
-            new StrictDeserializer(static::$serviceDescription, true)
+            new Deserializer(static::$serviceDescription, true)
         );
     }
 
