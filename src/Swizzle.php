@@ -397,7 +397,7 @@ class Swizzle
         // resolve URL relative to base path for all operations
         $uri = implode('/', [rtrim($baseUri, '/'), ltrim($api['path'], '/')]);
         // keep domain only if not under service base path
-        if (strpos($uri, $baseUri) === 0) {
+        if ($baseUri !== '' && strpos($uri, $baseUri) === 0) {
             $uri = preg_replace('!^https?://[^/]+!', '', $uri);
         }
         $this->debug('+ adding api %s ...', $uri);
@@ -882,14 +882,14 @@ class Swizzle
     /**
      * Export service description to JSON
      *
-     * @return string
+     * @return array
      */
     public function toArray()
     {
         $result = [
             'name' => $this->init['name'],
             'apiVersion' => $this->init['apiVersion'],
-            'baseUri' => $this->init['baseUri'],
+            'baseUri' => isset($this->init['baseUri']) ? $this->init['baseUri'] : '',
             'description' => $this->init['description'],
         ];
         $result['operations'] = $this->operations;
