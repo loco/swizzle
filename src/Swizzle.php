@@ -5,8 +5,7 @@ namespace Loco\Utils\Swizzle;
 use GuzzleHttp\Command\Guzzle\Description;
 use GuzzleHttp\Command\Guzzle\Operation;
 use GuzzleHttp\Command\Guzzle\Parameter;
-use Loco\Utils\Swizzle\Result\ApiDeclaration;
-use Loco\Utils\Swizzle\Result\ResourceListing;
+use GuzzleHttp\Command\ResultInterface;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 
@@ -304,6 +303,8 @@ class Swizzle
         if (isset($model['id']) === true) {
             // if model id is set, us it as a name
             $name = trim($model['id']);
+        } elseif (isset($model['nickname'], $this->responseClasses[$model['nickname']])) {
+            $name = $model['nickname'];
         } elseif (isset($model['type']) && $model['type'] === 'array' && isset($model['nickname'])) {
             // if model is of array type, generate it's name from operation nickname (e.g. getTags -> TagList)
             $found = preg_match('/[A-Z]/', $model['nickname'], $matches, PREG_OFFSET_CAPTURE);
@@ -330,6 +331,22 @@ class Swizzle
             }
         } elseif ('array' === $data['type']) {
             $data['location'] = $location;
+        }
+
+        // allow result class override
+        if (isset($this->responseClasses[$name])) {
+            $class = $this->responseClasses[$name];
+            $data['class'] = $class;
+
+            if (is_subclass_of($class, ResultInterface::class)) {
+                $data['type'] = 'object';
+                if (is_array($data['additionalProperties']) === false) {
+                    $data['additionalProperties'] = [];
+                }
+                $data['additionalProperties']['location'] = $location;
+            } else {
+                $data['type'] = 'class';
+            }
         }
 
         // required makes no sense at root of model
@@ -421,12 +438,7 @@ class Swizzle
                 $config['class'] = $this->commandClasses[''];
             }
 
-            // allow registered response class to override all response type logic
-            if (isset($this->responseClasses[$id])) {
-                $config['responseType'] = 'class';
-                $config['responseClass'] = $this->responseClasses[$id];
-            } elseif (isset($config['responseType'])) { // handle response type if defined
-
+            if (isset($config['responseType'])) { // handle response type if defined
                 // Check for primitive values first
                 $type = $this->transformSimpleType($config['responseType']);
 
@@ -826,7 +838,7 @@ class Swizzle
         foreach ($arr as $key => $val) {
             $words[] = $key;
             if (is_array($val)) {
-                $words[] = self::hashArray($val, $words, true);
+                $words = self::hashArray($val, $words, true);
             } else {
                 $words[] = (string)$val;
             }
