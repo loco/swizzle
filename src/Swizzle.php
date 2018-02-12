@@ -305,11 +305,16 @@ class Swizzle
             $name = trim($model['id']);
         } elseif (isset($model['nickname'], $this->responseClasses[$model['nickname']])) {
             $name = $model['nickname'];
-        } elseif (isset($model['type']) && $model['type'] === 'array' && isset($model['nickname'])) {
-            // if model is of array type, generate it's name from operation nickname (e.g. getTags -> TagList)
-            $found = preg_match('/[A-Z]/', $model['nickname'], $matches, PREG_OFFSET_CAPTURE);
-            if ($found === 1) {
-                $name = rtrim(substr($model['nickname'], $matches[0][1]), 's').'List';
+        } elseif (isset($model['type']) === true && $model['type'] === 'array') {
+            if (isset($model['items']['$ref']) === true) {
+                // E. g. if it's an array of 'Tag' models, call this model 'TagList'.
+                $name = $model['items']['$ref'].'List';
+            } elseif (isset($model['nickname']) === true) {
+                // Fallback generate name from operation nickname (e.g. getTags -> TagList)
+                $found = preg_match('/[A-Z]/', $model['nickname'], $matches, PREG_OFFSET_CAPTURE);
+                if ($found === 1) {
+                    $name = rtrim(substr($model['nickname'], $matches[0][1]), 's').'List';
+                }
             }
         }
         if ($name === null) {
@@ -440,14 +445,21 @@ class Swizzle
 
             if (isset($config['responseType'])) { // handle response type if defined
                 // Check for primitive values first
-                $type = $this->transformSimpleType($config['responseType']);
+                $simpleType = $this->transformSimpleType($config['responseType']);
 
-                if ($type !== null && $type !== 'null') {
+                if ($simpleType !== null && $simpleType !== 'null') {
                     // If response type is defined, there should always be a responseModel, not a primitive type.
                     // Response model itself can represent a primitive type
                     $model = $this->addModel($operationData);
-                    $type = $model->getName();
-                    $config['responseModel'] = $type;
+                    $config['responseModel'] = $model->getName();
+                } else {
+                    if ($this->hasModel($config['responseType'])) {
+                        $config['responseModel'] = $config['responseType'];
+                    } else {
+                        throw new \RuntimeException(
+                            "Response model {$config['responseType']} required by operation {$id} is not registered."
+                        );
+                    }
                 }
                 unset($config['responseType']);
             }
