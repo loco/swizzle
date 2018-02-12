@@ -57,12 +57,6 @@ class Swizzle
     private $responseClasses = [];
 
     /**
-     * Registry of custom operation command classes, mapped by method command name
-     * @var array
-     */
-    private $commandClasses = [];
-
-    /**
      * Delay between HTTP requests in microseconds
      * @var int
      */
@@ -93,6 +87,16 @@ class Swizzle
         $this->logger = new Logger('swizzle');
         // if we don't add a handler we get debug messages by default.
         $this->logger->pushHandler(new StreamHandler('php://stderr', Logger::ERROR));
+    }
+
+    /**
+     * Reset renerated models, operations and current service Description
+     */
+    public function reset()
+    {
+        $this->models = [];
+        $this->operations = [];
+        $this->serviceDescription = null;
     }
 
     /**
@@ -207,17 +211,21 @@ class Swizzle
      *
      * @return Swizzle
      *
+     * @throws \LogicException
      * @throws \InvalidArgumentException
      */
     public function registerResponseClass($name, $class)
     {
         $this->responseClasses[$name] = $class;
         // set retrospectively if method already encountered
-        if (
-            $this->serviceDescription instanceof Description
-            && $this->serviceDescription->hasOperation($name) === true
+        if ($this->serviceDescription !== null
+            && $this->hasOperation($name) === true
         ) {
-            $this->serviceDescription->getOperation($name)->setResponseClass($class);
+            throw new \LogicException(
+                "Too late to add new response class, {$name} operation has already been defined. "
+                .'If you want to add a new response class, call reset() method first, add new response class '
+                .'and run build again.'
+            );
         }
         return $this;
     }
@@ -436,13 +444,6 @@ class Swizzle
                 $id = $config['name'] = $method.'_'.str_replace('/', '_', trim($uri, '/'));
             }
 
-            // allow custom command class, or global class for all commands
-            if (isset($this->commandClasses[$id])) {
-                $config['class'] = $this->commandClasses[$id];
-            } elseif (isset($this->commandClasses[''])) {
-                $config['class'] = $this->commandClasses[''];
-            }
-
             if (isset($config['responseType'])) { // handle response type if defined
                 // Check for primitive values first
                 $simpleType = $this->transformSimpleType($config['responseType']);
@@ -481,13 +482,6 @@ class Swizzle
             // @todo how to deny additional parameters in command calls?
             // $config['additionalParameters'] = false;
             $operation = new Operation($config, $service);
-//            // Sanitize custom response class because Guzzle doesn't know it doesn't exist yet
-//            if( Operation::TYPE_CLASS === $operation->getResponseType() ){
-//                $class = $operation->getResponseClass();
-//                if( empty($this->responseClasses[$id]) || $class !== $this->responseClasses[$id] ){
-//                    throw new \Exception('responseType defaulted to class "'.$class.'" but class not registered');
-//                }
-//            }
             $this->operations[$operation->getName()] = $operation->toArray();
         }
         return $this;
@@ -924,5 +918,9 @@ class Swizzle
         return isset($this->models[$id]);
     }
 
+    protected function hasOperation($id)
+    {
+        return isset($this->operations[$id]);
+    }
 }
 
