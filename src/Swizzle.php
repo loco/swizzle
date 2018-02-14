@@ -312,8 +312,10 @@ class Swizzle
             // if model id is set, us it as a name
             $name = trim($model['id']);
         } elseif (isset($model['nickname'], $this->responseClasses[$model['nickname']])) {
+            // if custom response class is defined with model nickname, use nickname
             $name = $model['nickname'];
         } elseif (isset($model['type']) === true && $model['type'] === 'array') {
+            // if model is of array type
             if (isset($model['items']['$ref']) === true) {
                 // E. g. if it's an array of 'Tag' models, call this model 'TagList'.
                 $name = $model['items']['$ref'].'List';
@@ -325,6 +327,7 @@ class Swizzle
                 }
             }
         }
+        // if none of above worked to create a model name, hash model array
         if ($name === null) {
             $name = $model['id'] = 'anon_'.self::hashArray($model);
         }
@@ -418,7 +421,6 @@ class Swizzle
         // no need for full url if relative to current
         // operation keys common to both swagger and guzzle
         static $common = [
-            'items' => 1,
             'summary' => 1,
         ];
         // translate swagger -> guzzle 
