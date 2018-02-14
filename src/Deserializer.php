@@ -14,17 +14,8 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 /**
- * Handler used to create response models based on an HTTP response and
- * a service description.
- *
- * Response location visitors are registered with this Handler to handle
- * locations (e.g., 'xml', 'json', 'header'). All of the locations of a response
- * model that will be visited first have their ``before`` method triggered.
- * After the before method is called on every visitor that will be walked, each
- * visitor is triggered using the ``visit()`` method. After all of the visitors
- * are visited, the ``after()`` method is called on each visitor. This is the
- * place in which you should handle things like additionalProperties with
- * custom locations (i.e., this is how it is handled in the JSON visitor).
+ * Deserializer capable of deserializing response into a custom result class.
+ * Passes response to Guzzle's default deserializer if no class is specified.
  */
 class Deserializer extends DefaultDeserializer
 {
@@ -32,6 +23,11 @@ class Deserializer extends DefaultDeserializer
      * @var CommandInterface
      */
     protected $command;
+
+    /**
+     * @var SchemaValidator
+     */
+    protected $validator;
 
     /**
      * Deserialize the response into the specified result representation
@@ -46,6 +42,7 @@ class Deserializer extends DefaultDeserializer
     public function __invoke(ResponseInterface $response, RequestInterface $request, CommandInterface $command)
     {
         $this->command = $command;
+        $this->validator = new SchemaValidator();
         return parent::__invoke($response, $request, $command);
     }
 
@@ -98,14 +95,13 @@ class Deserializer extends DefaultDeserializer
         }
 
         if ($result instanceof ResultInterface) {
-            $validator = new SchemaValidator();
             // @TODO: Remove this note and pass $result once PR #158 in guzzle-services is accepted
             // At the moment only arrays are correctly validated, but not ToArrayInterface objects.
             // @see https://github.com/guzzle/guzzle-services/pull/158
             $res = $result->toArray();
-            if ($validator->validate($model, $res) === false) {
+            if ($this->validator->validate($model, $res) === false) {
                 throw new ValidationException(
-                    'Response failed model validation: ' . implode("\n", $validator->getErrors()),
+                    'Response failed model validation: ' . implode("\n", $this->validator->getErrors()),
                     $this->command
                 );
             }
