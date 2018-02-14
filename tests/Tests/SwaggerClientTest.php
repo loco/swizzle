@@ -89,8 +89,9 @@ class SwaggerClientTest extends \PHPUnit_Framework_TestCase
     {
         $client = $this->createClient();
         $this->assertEquals(static::BASE_URI, $client->getDescription()->getBaseUri()->__toString(), 'base_url not passed to description');
-        $this->assertTrue(isset($client->getHttpClient()->getConfig()['base_uri']));
-        $this->assertEquals(static::BASE_URI, $client->getHttpClient()->getConfig()['base_uri'], 'base_url not passed to client');
+        $config = $client->getHttpClient()->getConfig();
+        $this->assertArrayHasKey('base_uri', $config);
+        $this->assertEquals(static::BASE_URI, $config['base_uri'], 'base_url not passed to client');
     }
 
     /**
