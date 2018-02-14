@@ -4,81 +4,98 @@ namespace Loco\Tests\Utils\Swizzle;
 
 use Loco\Utils\Swizzle\ModelCollection;
 
-
 /**
  * @group utils
  */
-class ModelCollectionTest extends \PHPUnit_Framework_TestCase {
+class ModelCollectionTest extends \PHPUnit_Framework_TestCase
+{
 
     // define a model that depends on a model
-    private static $raw = array (
-        'foo' => array(),
-        'baz' => array(
-            'items' => array(
+    private static $raw = [
+        'foo' => [],
+        'baz' => [
+            'items' => [
                 '$ref' => 'bar',
-            ),
-        ),
-        'bar' => array(
-            'items' => array(
+            ],
+        ],
+        'bar' => [
+            'items' => [
                 '$ref' => 'foo',
-            ),
-        ),
-    );
-    
-    
-    public function testConstruct(){
-        $sorted = new ModelCollection( self::$raw );
-        $this->assertCount( 3, $sorted );
-        return $sorted;
+            ],
+        ],
+    ];
+
+    /**
+     * @return ModelCollection
+     *
+     * @throws \Exception
+     */
+    public function testConstruct()
+    {
+        $modelCollection = new ModelCollection(self::$raw);
+        $this->assertCount(3, $modelCollection);
+        return $modelCollection;
     }
-    
-    
-    public function testCollectRefs(){
-        $refs = ModelCollection::collectRefs( self::$raw['bar'] );
-        $this->assertArrayHasKey('foo', $refs );
+
+    public function testCollectRefs()
+    {
+        $refs = ModelCollection::collectRefs(self::$raw['bar']);
+        $this->assertArrayHasKey('foo', $refs);
     }
-    
-    
+
     /**
      * @depends testConstruct
+     *
+     * @param ModelCollection $collection
+     *
+     * @return ModelCollection
      */
-    public function testDependencyOrder( ModelCollection $sorted ){
-        $order = $sorted->getKeys();
+    public function testDependencyOrder(ModelCollection $collection)
+    {
+        $keys = array_keys($collection->getData());
+
         // test that "foo" comes before "bar"
-        $lower = array_search('foo',$order);
-        $higher = array_search('bar',$order);
-        $this->assertGreaterThan( $lower, $higher, '"foo" index expected to be lower than "bar"' );
+        $lower = array_search('foo', $keys, true);
+        $higher = array_search('bar', $keys, true);
+        $this->assertGreaterThan($lower, $higher, '"foo" index expected to be lower than "bar"');
+
         // test that "bar" comes before "baz"
-        $lower = array_search('bar',$order);
-        $higher = array_search('baz',$order);
-        $this->assertGreaterThan( $lower, $higher, '"bar" index expected to be lower than "baz"' );
-        return $sorted;
+        $lower = array_search('bar', $keys, true);
+        $higher = array_search('baz', $keys, true);
+        $this->assertGreaterThan($lower, $higher, '"bar" index expected to be lower than "baz"');
+
+        return $collection;
     }
-    
-    
-    
+
     /**
      * @depends testDependencyOrder
-     * @expectedException \Exception
+     * @expectedException \Loco\Utils\Swizzle\Exception\CircularReferenceException
+     *
+     * @param ModelCollection $collection
+     *
+     * @throws \Exception
      */
-    public function testCircularReferenceFails( ModelCollection $sorted ){
-        $models = $sorted->toArray();
+    public function testCircularReferenceFails(ModelCollection $collection)
+    {
+        $models = $collection->getData();
         // bar depends on foo, let foo also depend on bar
         $models['foo']['items']['$ref'] = 'bar';
-        $sorted = new ModelCollection( $models );
-    }    
-    
-    
-    
+        new ModelCollection($models);
+    }
+
     /**
      * @depends testDependencyOrder
+     *
+     * @param ModelCollection $collection
+     *
+     * @throws \Exception
      */
-    public function testSelfReferencePermitted( ModelCollection $sorted ){
-        $models = $sorted->toArray();
+    public function testSelfReferencePermitted(ModelCollection $collection)
+    {
+        $models = $collection->getData();
         // Let foo also depend upon itself.
         $models['foo']['items']['$ref'] = 'foo';
-        $sorted = new ModelCollection( $models );
-    }    
-    
-    
+        new ModelCollection($models);
+    }
+
 }

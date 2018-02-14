@@ -2,45 +2,60 @@
 
 namespace Loco\Utils\Swizzle;
 
-use Guzzle\Common\Collection;
-use Guzzle\Service\Client;
-use Guzzle\Service\Description\ServiceDescription;
+use GuzzleHttp\Client;
+use GuzzleHttp\Command\Guzzle\Description;
+use GuzzleHttp\Command\Guzzle\GuzzleClient;
+use Loco\Utils\Swizzle\Result\ApiDeclaration;
+use Loco\Utils\Swizzle\Result\ResourceListing;
 
 /**
  * Client for pulling Swagger docs
- * 
- * @method array getResources
- * @method array getDeclaration
+ *
+ * @method ResourceListing getResources(array $args = [])
+ * @method ApiDeclaration getDeclaration(array $args = [])
  */
-class SwaggerClient extends Client {
-
-    
+class SwaggerClient extends GuzzleClient
+{
     /**
      * Factory method to create a new Swagger Docs client.
-     * @param array|Collection $config Configuration data
+     *
+     * @param array $config Configuration data
+     *
      * @return SwaggerClient
+     *
+     * @throws \InvalidArgumentException
      */
-    public static function factory( $config = array() ){
-       
-        // no default base url, but must be passed
-        $default = array();
-        $required = array('base_url');
+    public static function factory(array $config = [])
+    {
+        // Swagger docs URI is required
+        $required = ['base_uri'];
+        if ($missing = array_diff($required, array_keys($config))) {
+            throw new \InvalidArgumentException('Config is missing the following keys: '.implode(', ', $missing));
+        }
 
-        // Merge in default settings and validate the config
-        $config = Collection::fromConfig( $config, $default, $required );
+        $serviceConfig = json_decode(file_get_contents(__DIR__.'/Resources/service.json'), true);
+        // allow override of base_uri after it's been set by service description
+        if (isset($config['base_uri'])) {
+            $serviceConfig['baseUri'] = $config['base_uri'];
+        }
+        // describe service from included config file.
+        $description = new Description($serviceConfig);
+
+        // Prefix Loco identifier to user agent string
+        $config['headers']['User-Agent'] = $description->getName().'/'.$description->getApiVersion()
+            .' '.\GuzzleHttp\default_user_agent();
+
+        // Create a new instance of HTTP Client
+        $client = new Client($config);
 
         // Create a new instance of self
-        $client = new self( $config->get('base_url'), $config );
-
-        // describe service from JSON file.
-        $service = ServiceDescription::factory( __DIR__.'/Resources/service.json');
-        
-        // Prefix Loco identifier to user agent string
-        $client->setUserAgent( $service->getName().'/'.$service->getApiVersion(), true );
-
-        return $client->setDescription( $service );
-                
-    }   
+        return new self(
+            $client,
+            $description,
+            null,
+            new Deserializer($description, true)
+        );
+    }
 
 }
 

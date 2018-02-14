@@ -21,7 +21,7 @@ Add the latest stable version of [loco/swizzle](https://packagist.org/packages/l
 ```json
 {
   "require": {
-    "loco/swizzle": "~1.0"
+    "loco/swizzle": "~2.0"
   }
 }
 ```
@@ -36,7 +36,10 @@ Basic usage is to configure, build and export - as follows:
 ```php 
 $service = new Loco\Utils\Swizzle\Swizzle( 'foo', 'Foo API' );
 $service->build('http://foo.bar/path/to/swagger/docs/');
-echo $service->export();
+// Serialize Guzzle service config to json
+$json = $service->toJson();
+file_put_contents('/path/to/config.json', $builder->toJson());
+// Now use saved config.json in your project/library to create Guzzle service.
 ```
 
 More advanced usage includes registering custom Guzzle classes for commands and responses. See [example](https://github.com/loco/swizzle/tree/master/example) directory for fuller, working examples.
@@ -48,4 +51,4 @@ Build the PHP API documentation with [apigen](http://apigen.org/) using `apigen 
 
 This version was developed very quickly for our own API specifically. That means it's not guaranteed to support the whole Swagger spec. 
 
-This version was written for Guzzle 3, but the Guzzle project has since moved on to version 4.
+This library supports only version 1.2 of Swagger spec.
