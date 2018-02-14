@@ -11,6 +11,12 @@
             "email": "support-swizzle@localise.biz",
             "homepage": "https://localise.biz/",
             "role": "Developer"
+        },
+        {
+            "name": "Alexandr Zolotukhin",
+            "email": "alex@alexandrz.com",
+            "homepage": "https://github.com/supersmile2009",
+            "role": "Developer"
         }
     ],
     "require": {
