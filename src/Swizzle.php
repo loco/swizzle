@@ -231,6 +231,19 @@ class Swizzle
     }
 
     /**
+     * Fetch the responseClass returned for a given method.
+     * Clients may default to a generic class like `GuzzleHttp\Command\Result` when empty
+     *
+     * @param string name of command
+     *
+     * @return string
+     */
+    public function getResponseClass($name)
+    {
+        return isset($this->responseClasses[$name]) ? $this->responseClasses[$name] : '';
+    }
+
+    /**
      * Build from a live endpoint
      *
      * @param string Swagger compliant JSON endpoint for resource listing
