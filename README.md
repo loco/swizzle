@@ -9,7 +9,10 @@ Build [Guzzle](http://guzzlephp.org) service descriptions from [Swagger](https:/
 
 Although Guzzle's service descriptions are [heavily inspiried](http://docs.guzzlephp.org/en/latest/webservice-client/guzzle-service-descriptions.html) by the Swagger spec, they are different enough that we need something to bridge the divide.
 
-Swizzle crawls JSON Swagger docs ([such as ours](https://localise.biz/api/swagger)) and transforms it into a Guzzle service description for output into your client code.
+Swizzle crawls JSON Swagger docs ([such as ours](https://localise.biz/api/swagger)) and transforms them into a compatible schema for use with [guzzle/guzzle-services](https://github.com/guzzle/guzzle-services).
+
+
+> **Important!** This library is for use with v1.2 of the Swagger specification which is obsolete.
 
 
 ## Installation
@@ -49,6 +52,4 @@ Build the PHP API documentation with [apigen](http://apigen.org/) using `apigen 
 
 ### Limitations
 
-This version was developed very quickly for our own API specifically. That means it's not guaranteed to support the whole Swagger spec. 
-
-This library supports only version 1.2 of Swagger spec.
+This library supports **only** version 1.2 of the old Swagger specification. We developed this very quickly for our own needs, and haven't kept up with the newer [OpenAPI](https://swagger.io/specification/) project. 
