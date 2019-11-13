@@ -9,19 +9,22 @@
 require __DIR__.'/../vendor/autoload.php';
 use Loco\Utils\Swizzle\Swizzle;
 
-// Intialize service with name and description
-$builder = new Swizzle( 'loco', 'Loco REST API' );
+// Initialize service with name and description
+$builder = new Swizzle('loco', 'Loco REST API');
 
 // show progress messages in output
-$builder->verbose( STDERR );
+$builder->verbose(STDERR);
 
 // Register custom Guzzle response classes - such things are meaningless to Swagger.
 // These classes don't have have to exist in this runtime, they just go into the service definition.
-$builder->registerResponseClass('exportArchive', '\Loco\Http\Response\ZipResponse' );
-       
+$builder->registerResponseClass('exportArchive', 'Loco\\Http\\Response\\ZipResponse');
+$builder->registerResponseClass('exportTemplate', 'Loco\Http\Response\\RawResult');
+$builder->registerResponseClass('exportLocale', 'Loco\\Http\\Response\\RawResult');
+$builder->registerResponseClass('exportAll', 'Loco\\Http\\Response\\RawResult');
+
 // Now we're ready to build from a live endpoint
 // This must be a Valid Swagger JSON resource listing.
-$builder->build('https://localise.biz/api/swagger');        
+$builder->build('https://localise.biz/api/swagger');
 
 // export service description to JSON:
 echo $builder->toJson();
