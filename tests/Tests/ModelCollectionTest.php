@@ -37,11 +37,6 @@ class ModelCollectionTest extends \PHPUnit\Framework\TestCase
         return $modelCollection;
     }
 
-    public function testCollectRefs()
-    {
-        $refs = ModelCollection::collectRefs(self::$raw['bar']);
-        $this->assertArrayHasKey('foo', $refs);
-    }
 
     /**
      * @depends testConstruct
@@ -69,26 +64,22 @@ class ModelCollectionTest extends \PHPUnit\Framework\TestCase
 
     /**
      * @depends testDependencyOrder
-     * @expectedException \Loco\Utils\Swizzle\Exception\CircularReferenceException
      *
      * @param ModelCollection $collection
-     *
-     * @throws \Exception
      */
-    public function testCircularReferenceFails(ModelCollection $collection)
+    public function testCircularReferencePermitted(ModelCollection $collection)
     {
         $models = $collection->getData();
         // bar depends on foo, let foo also depend on bar
         $models['foo']['items']['$ref'] = 'bar';
-        new ModelCollection($models);
+        $modelCollection = new ModelCollection($models);
+        $this->assertCount(3, $modelCollection);
     }
 
     /**
      * @depends testDependencyOrder
      *
      * @param ModelCollection $collection
-     *
-     * @throws \Exception
      */
     public function testSelfReferencePermitted(ModelCollection $collection)
     {
