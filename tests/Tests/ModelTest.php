@@ -15,7 +15,7 @@ use Loco\Utils\Swizzle\Deserializer;
  * Tests Guzzle's internal modelling logic.
  * @group model
  */
-class ModelTest extends \PHPUnit_Framework_TestCase
+class ModelTest extends \PHPUnit\Framework\TestCase
 {
     /**
      * @var Description

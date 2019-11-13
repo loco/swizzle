@@ -10,7 +10,7 @@ use Loco\Utils\Swizzle\Swizzle;
  * Tests Swizzle
  * @group transform
  */
-class SwizzleTest extends \PHPUnit_Framework_TestCase
+class SwizzleTest extends \PHPUnit\Framework\TestCase
 {
     /**
      * @return Swizzle

@@ -12,7 +12,7 @@ use Loco\Utils\Swizzle\SwaggerClient;
  * Tests SwaggerClient
  * @group swagger
  */
-class SwaggerClientTest extends \PHPUnit_Framework_TestCase
+class SwaggerClientTest extends \PHPUnit\Framework\TestCase
 {
     const BASE_URI = 'https://localise.biz/api/docs';
 

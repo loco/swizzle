@@ -7,7 +7,7 @@ use Loco\Utils\Swizzle\ModelCollection;
 /**
  * @group utils
  */
-class ModelCollectionTest extends \PHPUnit_Framework_TestCase
+class ModelCollectionTest extends \PHPUnit\Framework\TestCase
 {
 
     // define a model that depends on a model
@@ -95,7 +95,8 @@ class ModelCollectionTest extends \PHPUnit_Framework_TestCase
         $models = $collection->getData();
         // Let foo also depend upon itself.
         $models['foo']['items']['$ref'] = 'foo';
-        new ModelCollection($models);
+        $modelCollection = new ModelCollection($models);
+        $this->assertCount(3, $modelCollection);
     }
 
 }
