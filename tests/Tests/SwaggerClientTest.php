@@ -79,7 +79,6 @@ class SwaggerClientTest extends \PHPUnit\Framework\TestCase
         ];
         /** @noinspection AdditionOperationOnArraysInspection */
         return SwaggerClient::factory($config + $defaults);
-
     }
 
     /**
@@ -135,5 +134,4 @@ class SwaggerClientTest extends \PHPUnit\Framework\TestCase
         $this->assertCount(1, $models);
         $this->assertArrayHasKey('Echo', $models->getData());
     }
-
 }

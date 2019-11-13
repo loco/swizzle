@@ -40,5 +40,4 @@ class ApiDeclaration extends BaseResponse
         $models = $this->get('models') ?: [];
         return new ModelCollection($models);
     }
-
 }

@@ -98,5 +98,4 @@ class ModelCollectionTest extends \PHPUnit\Framework\TestCase
         $modelCollection = new ModelCollection($models);
         $this->assertCount(3, $modelCollection);
     }
-
 }

@@ -245,7 +245,4 @@ class ModelTest extends \PHPUnit\Framework\TestCase
 
         $this->assertEquals($modelData, $dump);
     }
-
 }
-
-

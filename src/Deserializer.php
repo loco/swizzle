@@ -108,5 +108,4 @@ class Deserializer extends DefaultDeserializer
         }
         return $result;
     }
-
 }

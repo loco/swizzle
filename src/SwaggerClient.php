@@ -56,6 +56,4 @@ class SwaggerClient extends GuzzleClient
             new Deserializer($description, true)
         );
     }
-
 }
-

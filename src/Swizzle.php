@@ -436,7 +436,7 @@ class Swizzle
         static $common = [
             'summary' => 1,
         ];
-        // translate swagger -> guzzle 
+        // translate swagger -> guzzle
         static $trans = [
             'type' => 'responseType',
             'notes' => 'responseNotes',
@@ -674,7 +674,7 @@ class Swizzle
                     throw new \RuntimeException('"'.$ref.'" encountered as items $ref but not defined as a model');
                 }
             }
-            // Else define a literal model definition on the fly. 
+            // Else define a literal model definition on the fly.
             // Guzzle will resolve back to literals on output, but it helps us resolve typed arrays and such
             else {
                 if (isset($target['items']['type']) && $this->transformSimpleType($target['items']['type']) !== null) {
@@ -938,4 +938,3 @@ class Swizzle
         return isset($this->operations[$id]);
     }
 }
-

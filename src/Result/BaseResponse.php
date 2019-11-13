@@ -89,5 +89,4 @@ abstract class BaseResponse extends Result
     {
         return $this->get('apis') ?: [];
     }
-
 }

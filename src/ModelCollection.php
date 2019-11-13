@@ -123,5 +123,4 @@ class ModelCollection implements \IteratorAggregate
         }
         return $refs;
     }
-
 }

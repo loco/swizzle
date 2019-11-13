@@ -6,5 +6,4 @@ use GuzzleHttp\Command\Exception\CommandException;
 
 class ValidationException extends CommandException
 {
-
 }

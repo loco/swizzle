@@ -17,5 +17,4 @@ class ResourceListing extends BaseResponse
         $info = $this->get('info') ?: [];
         return array_intersect_key($info, $defaults) + $defaults;
     }
-
 }

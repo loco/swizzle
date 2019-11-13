@@ -39,7 +39,7 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
      */
     public function testModelAddition(Swizzle $builder)
     {
-        // mock a Swagger model definition with one mandatory property    
+        // mock a Swagger model definition with one mandatory property
         $def = [
             'id' => 'fooType',
             'properties' => [
@@ -144,7 +144,7 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
      */
     public function testOperationParameters(Swizzle $builder)
     {
-        // mock a Swagger API op with params 
+        // mock a Swagger API op with params
         $api = [
             'path' => '/test/params',
             'operations' => [
@@ -330,7 +330,6 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
         $model = $description->getModel('anon_type_array_items_type_integer');
         $this->assertEquals('array', $model->getType());
         $this->assertEquals('integer', $model->getItems()->getType());
-
     }
 
     /**
@@ -357,13 +356,4 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
         ];
         $builder->addApi($api);
     }
-
 }
-
-
-
-
-
-
-
-
