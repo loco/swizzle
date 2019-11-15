@@ -67,11 +67,6 @@ class Swizzle
     private $models = [];
 
     /**
-     * @var true[]
-     */
-    private $responseModels = [];
-
-    /**
      * @var Operation[]
      */
     private $operations = [];
@@ -100,7 +95,6 @@ class Swizzle
     {
         $this->models = [];
         $this->operations = [];
-        $this->responseModels = [];
         $this->serviceDescription = null;
     }
 
@@ -489,22 +483,20 @@ class Swizzle
                         $this->debug('+ adding custom response type %s', $name);
                         $this->models[$name] = ['name' => $name, 'type' => 'class', 'class' => $class, 'description' => 'Custom response class'];
                     }
-                    // Response may be a registered model
+                    $config['responseModel'] = $name;
+                // Response may be a registered model
                 } elseif ($this->hasModel($responseType)) {
-                    $name = $responseType;
+                    $config['responseModel'] = $responseType;
                 // Response may be a primitive type, like "string" but still required representing by a model
                 // This may also be a "array" in which case items->$ref will be resolved to a registered model
                 } elseif ($simpleType && $simpleType !== 'null') {
-                    $name = $this->addModel($operationData)->getName();
+                    $config['responseModel'] = $this->addModel($operationData)->getName();
                 // else model was not registered via api declaration which occurs before operations added
                 } else {
                     throw new \RuntimeException(
                         "Response model {$responseType} required by operation {$id} is not registered."
                     );
                 }
-                // register response model used. only models that are exposed at top-level need be exported
-                $config['responseModel'] = $name;
-                $this->responseModels[$name] = true;
             }
 
             // handle parameters
@@ -523,6 +515,8 @@ class Swizzle
 
             // @todo how to deny additional parameters in command calls?
             // $config['additionalParameters'] = false;
+            // models can't be set on service description except on construction, but they are required to validate $ref fields
+            $service = new Description(['models'=>$this->models]);
             $operation = new Operation($config, $service);
             $this->operations[$operation->getName()] = $operation->toArray();
         }
@@ -549,16 +543,19 @@ class Swizzle
             }
             $param = $this->transformSchema($param);
             $location = isset($param['location']) ? $param['location'] : '';
-            // resolve models immediately. Guzzle will resolve anyway and we need the data for request body transforms
+            // resolve parameter of a model type
             if (isset($param['$ref'])) {
-                // referencing model would mean adopting "type", but Guzzle seems not to allow model properties to reference other models
-                // $param['type'] = $param['$ref'];
-                $id = $param['$ref'];
-                $model = $this->models[$id];
-                // embed model instead, but preserve property metadata
-                $param['type'] = 'object';
-                $param += $model;
-                unset($param['$ref']);
+                $ref = $param['$ref'];
+                if (! $this->hasModel($ref)) {
+                    throw new \RuntimeException('Referenced '.$ref.' in parameter but model not registered');
+                }
+                // guzzle can resolve the $ref, but embedding for requests so we can map properly into unique namespace
+                // TODO if we're embedding, then we need to do it recursively because model may itself contain refs
+                // TODO this is insufficient for detecting request parameter binding. 
+                if ('body' === $location) {
+                    $param += $this->models[$ref];
+                    unset($param['$ref']);
+                }
             }
             // handle paramType -> location mapping.
             if ($location) {
@@ -571,8 +568,8 @@ class Swizzle
             // handle serialization in request body.
             if ('body' === $location) {
                 $location = $this->requestType;
-                // objects properties must be moved into parent namespace or Guzzle will wrap them.
-                /** @var array[] $param */
+                // object properties must be moved into parent namespace or Guzzle will wrap them.
+                // ie. if the root of the body is {"foo":"bar"} we have a body property called "foo".
                 if (isset($param['properties'])) {
                     foreach ($param['properties'] as $propertyName => $property) {
                         $property['location'] = $location;
@@ -603,6 +600,7 @@ class Swizzle
                     $param['sentAs'] = $name;
                     $name = $param['name'] = $alias;
                 }
+                // add to namespace with unique key
                 $target[$name] = $param;
             }
         }
@@ -943,8 +941,8 @@ class Swizzle
             'description' => $this->init['description'],
         ];
         $result['operations'] = $this->operations;
-        if (!empty($this->responseModels)) {
-            $result['models'] = array_intersect_key($this->models, $this->responseModels);
+        if (!empty($this->models)) {
+            $result['models'] = $this->models;
         }
 
         return array_filter($result);

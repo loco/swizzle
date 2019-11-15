@@ -45,18 +45,17 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
             'properties' => [
                 'bar' => [
                     'type' => 'string',
-                    'description' => 'A test property',
+                    'description' => 'A test property fooType.bar',
                 ],
             ],
             'required' => [
                 'bar',
             ],
         ]);
-        // model won't be exposed unless used as top-level response type
-        $builder->addApi(['operations'=> [ [
+        /*$builder->addApi(['operations'=> [ [
             'nickname' > 'getFoo',
             'type' => 'fooType',
-        ]]]);
+        ]]]);*/
         $description = new Description($builder->toArray());
         $this->assertCount(1, $description->getModels());
         $foo = $description->getModel('fooType');
@@ -90,10 +89,10 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
         ];
         $builder->addModel($child);
         $builder->addModel($parent);
-        $builder->addApi(['operations'=> [ [
+        /*$builder->addApi(['operations'=> [ [
             'nickname' > 'getBaz',
             'type' => 'bazType',
-        ]]]);
+        ]]]);*/
         $description = new Description($builder->toArray());
         $baz = $description->getModel('bazType');
         $this->assertEquals('object', $baz->getProperty('bar')->getType());
@@ -131,7 +130,7 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
         $builder->addApi($api);
         $description = new Description($builder->toArray());
         $ops = $description->getOperations();
-        $this->assertCount(3, $ops, 'Wrong number of operations found');
+        $this->assertCount(2, $ops, 'Wrong number of operations found');
         // test specified command name:
         $this->assertArrayHasKey('getTest', $ops);
         // test auto-generated command name:
@@ -165,13 +164,13 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
                             'defaultValue' => 'ok',
                             'type' => 'string',
                         ],
-                        // model parameter containing $foo sent in request body
+                        // model parameter containing sent in request body
                         [
                             'name' => 'myFoo',
                             'type' => 'fooType',
                             'paramType' => 'body',
                         ],
-                        // object literal containing $bar will get merged in with model
+                        // object literal will get merged in with model
                         [
                             'name' => 'myBar',
                             'type' => 'object',
@@ -180,7 +179,7 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
                                 ['type' => 'string', 'name' => 'baz'],
                             ],
                         ],
-                        // deliberately add a parameter that conflicts with request body property
+                        // deliberately add a parameter that conflicts with request body property fooType.bar
                         [
                             'name' => 'bar',
                             'type' => 'string',
@@ -205,16 +204,16 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
         $child = $operation->getParam('baz');
         $this->assertInstanceOf(Parameter::class, $child);
         $this->assertEquals('json', $child->getLocation());
-        // Conflicting bar query param would be reached before conflicting with request body
+        // Conflicting bar query param should be reached before conflicting with request body fooType.bar
         $param = $operation->getParam('bar');
         $this->assertInstanceOf(Parameter::class, $param);
         $this->assertEquals('query', $param->getLocation());
-        // The fooType request body  should have resolved to an object too
-        $param = $operation->getParam('myFoo');
-        $this->assertNull($param);
+        // The fooType request body should have resolved to an object, but this means its properties are in root
+        $param = $operation->getParam('bar');
+        $this->assertEquals('query', $param->getLocation(), '?bar= should be bound in query');
         // We will need to use *_json namespace to access it as it's conflicted.
         $child = $operation->getParam('bar_json');
-        $this->assertInstanceOf(Parameter::class, $child);
+        $this->assertInstanceOf(Parameter::class, $child, '(fooType) myFoo::bar should be root body param');
         $this->assertEquals('json', $child->getLocation());
 
         return $builder;
