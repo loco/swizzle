@@ -267,7 +267,9 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
         $builder->addApi($api);
         $description = new Description($builder->toArray());
         $operation = $description->getOperation('get_test_type_literal');
-        $this->assertStringStartsWith('anon_', $operation->getResponseModel());
+        $name = $operation->getResponseModel();
+        $this->assertStringStartsWith('anon_', $name);
+        $this->assertTrue($builder->hasModel($name));
     }
 
     /**

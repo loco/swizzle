@@ -29,14 +29,14 @@ class ModelCollection implements \IteratorAggregate
             }
             self::collectDependencies($graph, $model);
         }
-        /*/ add internal "object" model ?
+        // Add internal "object" model as Swagger models probably didn't define it
         if ($graph->offsetExists('object') && ! isset($models['object'])) {
             $models['object'] = [
                 'id' => 'object',
-                'properties' => [],
-                'description' => 'Vanilla object',
+                'properties' =>  [],
+                'description' => 'Generic object',
             ];
-        }*/
+        }
         // Sort into dependency order
         $sorted = [];
         foreach ($graph as $ref => $deps) {

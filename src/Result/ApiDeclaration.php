@@ -33,7 +33,6 @@ class ApiDeclaration extends BaseResponse
      * Get model definitions
      *
      * @return ModelCollection
-     * @throws \Loco\Utils\Swizzle\Exception\CircularReferenceException
      */
     public function getModels()
     {

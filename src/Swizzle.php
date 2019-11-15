@@ -5,7 +5,6 @@ namespace Loco\Utils\Swizzle;
 use GuzzleHttp\Command\Guzzle\Description;
 use GuzzleHttp\Command\Guzzle\Operation;
 use GuzzleHttp\Command\Guzzle\Parameter;
-use GuzzleHttp\Command\ResultInterface;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 
@@ -51,7 +50,7 @@ class Swizzle
     private $requestType = 'json';
 
     /**
-     * Registry of custom reponse classes, mapped by method command name
+     * Registry of custom response classes, mapped by method command name
      * @var array
      */
     private $responseClasses = [];
@@ -63,7 +62,7 @@ class Swizzle
     private $delay = 200000;
 
     /**
-     * @var Parameter[]
+     * @var array[]
      */
     private $models;
 
@@ -90,7 +89,7 @@ class Swizzle
     }
 
     /**
-     * Reset renerated models, operations and current service Description
+     * Reset generated models, operations and current service Description
      */
     public function reset()
     {
@@ -290,10 +289,11 @@ class Swizzle
             if ($this->delay) {
                 usleep($this->delay);
             }
-            // @todo do proper path resolution here, allowing a cross-domain spec.
+            // TODO proper path resolution allowing a cross-domain spec.
             $path = rtrim(parse_url($baseUri)['path'], '/').'/'.ltrim($path, '/');
             $this->debug('pulling %s ...', $path);
             $apiDeclaration = $client->getDeclaration(compact('path'));
+            // Models must be registered before processing operations that use them
             foreach ($apiDeclaration->getModels() as $model) {
                 $this->addModel($model);
             }
@@ -324,9 +324,6 @@ class Swizzle
         if (isset($model['id']) === true) {
             // if model id is set, us it as a name
             $name = trim($model['id']);
-        } elseif (isset($model['nickname'], $this->responseClasses[$model['nickname']])) {
-            // if custom response class is defined with model nickname, use nickname
-            $name = $model['nickname'];
         } elseif (isset($model['type']) === true && $model['type'] === 'array') {
             // if model is of array type
             if (isset($model['items']['$ref']) === true) {
@@ -339,11 +336,16 @@ class Swizzle
                     $name = rtrim(substr($model['nickname'], $matches[0][1]), 's').'List';
                 }
             }
+        } elseif (isset($model['nickname']) === true) {
+            $name = $model['nickname'];
         }
+
         // if none of above worked to create a model name, hash model array
         if ($name === null) {
             $name = $model['id'] = 'anon_'.self::hashArray($model);
         }
+        
+        //
 
         // a model is basically a parameter, but has name property added
         $defaults = [
@@ -354,19 +356,29 @@ class Swizzle
         $data = $this->transformSchema($model + $defaults);
         if ('object' === $data['type']) {
             $data['additionalProperties'] = false;
-            // model must have top level properties specified as serialized response type, but no response type itself
-            foreach ($data['properties'] as $key => $property) {
-                $data['properties'][$key]['location'] = $location;
+            // an object that defines properties is expected to be immutable
+            if (isset($data['properties']) && 0 !== count($data['properties'])) {
+                // model must have top level properties specified as serialized response type, but no response type itself
+                foreach ($data['properties'] as $key => $property) {
+                    $data['properties'][$key]['location'] = $location;
+                }
+            }
+            // else vanilla "object" type if thus named
+            elseif ('object' ===  $name) {
+                $data['additionalProperties'] = true;
+            }
+            // else no point having a completely empty model
+            else {
+                $this->debug('! object model '.$name.' has empty properties');
+                $data['properties'] = [];
             }
         } elseif ('array' === $data['type']) {
             $data['location'] = $location;
         }
 
-        // allow result class override
+        // result class override has moved to operation loop
         if (isset($this->responseClasses[$name])) {
-            $class = $this->responseClasses[$name];
-            $data['class'] = $class;
-            $data['type'] = 'class';
+            throw new \Exception('Response classes should be handled only at top-level of an operation');
         }
 
         // required makes no sense at root of model
@@ -392,9 +404,11 @@ class Swizzle
         if ($modelData['type'] === 'array' && isset($modelData['name'])) {
             unset($modelData['name']);
         }
-        $this->debug('+ adding model %s', $model->getName());
-        $this->models[$model->getName()] = $modelData;
-
+        $name = $model->getName();
+        if (! isset($this->models[$name])) {
+            $this->debug('+ adding model %s', $name);
+            $this->models[$name] = $modelData;
+        }
         return $model;
     }
 
@@ -450,25 +464,40 @@ class Swizzle
                 $id = $config['name'] = $method.'_'.str_replace('/', '_', trim($uri, '/'));
             }
 
-            if (isset($config['responseType'])) { // handle response type if defined
-                // Check for primitive values first
-                $simpleType = $this->transformSimpleType($config['responseType']);
-
-                if ($simpleType !== null && $simpleType !== 'null') {
-                    // If response type is defined, there should always be a responseModel, not a primitive type.
-                    // Response model itself can represent a primitive type
-                    $model = $this->addModel($operationData);
-                    $config['responseModel'] = $model->getName();
-                } else {
-                    if ($this->hasModel($config['responseType'])) {
-                        $config['responseModel'] = $config['responseType'];
-                    } else {
-                        throw new \RuntimeException(
-                            "Response model {$config['responseType']} required by operation {$id} is not registered."
-                        );
-                    }
-                }
+            // handle response type if defined
+            if (isset($config['responseType'])) {
+                $responseType = $config['responseType'];
+                $simpleType = $this->transformSimpleType($responseType);
                 unset($config['responseType']);
+                // Custom response classes override all and are registered by nickname of operation
+                if (isset($this->responseClasses[$id])) {
+                    $class = $this->responseClasses[$id];
+                    // use naked class name unless another conflicting model exists.
+                    $ns = explode('\\', $class);
+                    $name = end($ns);
+                    if (isset($this->models[$name]) && $this->models[$name]['class'] !== $class) {
+                        $name = md5($class);
+                        $this->debug('! class name conflict on %s, hashing to %s', $class, $name);
+                    }
+                    if (!isset($this->models[$name])) {
+                        $this->debug('+ adding custom response type %s', $name);
+                        $this->models[$name] = ['name' => $name, 'type' => 'class', 'class' => $class, 'description' => 'Custom response class'];
+                    }
+                    $config['responseModel'] = $name;
+                // TODO handle vanilla 'object' type
+                // Response may be a registered model
+                } elseif ($this->hasModel($responseType)) {
+                    $config['responseModel'] = $responseType;
+                // Response may be a primitive type, like "string" but still required representing by a model
+                // This may also be a "array" in which case items->$ref will be resolved to a registered model
+                } elseif ($simpleType && $simpleType !== 'null') {
+                    $config['responseModel'] = $this->addModel($operationData)->getName();
+                // else model was not registered via api declaration which occurs before operations added
+                } else {
+                    throw new \RuntimeException(
+                        "Response model {$responseType} required by operation {$id} is not registered."
+                    );
+                }
             }
 
             // handle parameters
@@ -515,7 +544,14 @@ class Swizzle
             $location = isset($param['location']) ? $param['location'] : '';
             // resolve models immediately. Guzzle will resolve anyway and we need the data for request body transforms
             if (isset($param['$ref'])) {
-                $param = $this->models[$param['$ref']];
+                // referencing model would mean adopting "type", but Guzzle seems not to allow model properties to reference other models
+                // $param['type'] = $param['$ref'];
+                $id = $param['$ref'];
+                $model = $this->models[$id];
+                // embed model instead, but preserve property metadata
+                $param['type'] = 'object';
+                $param += $model;
+                unset($param['$ref']);
             }
             // handle paramType -> location mapping.
             if ($location) {
@@ -698,32 +734,27 @@ class Swizzle
         }
 
         if ($type === null) {
-            $type = $originalType = $target['type'];
-            if ($type && $this->hasModel($type)) {
+            $originalType = $target['type'];
+            if ($originalType && $this->hasModel($originalType)) {
                 // param type is registered model
-                $target['$ref'] = $type;
+                $target['$ref'] = $originalType;
                 unset($target['type']);
                 return $target;
             }
             // else handle as primitive type
             $frmt = isset($target['format']) ? $target['format'] : null;
-            $type = $target['type'] = $this->transformSimpleType($type, $frmt);
+            $type = $this->transformSimpleType($originalType, $frmt);
             // else fall back to a sensible default
             if (!$type) {
                 $this->debug('! type "%s" unknown, defaulting to null', $originalType);
-                $type = $target['type'] = 'null';
+                $type = 'null';
             }
+            $target['type'] = $type;
         }
 
         // Guzzle and swagger have minimal format overlap
         if (isset($target['format'])) {
             $target['format'] = $this->transformTypeFormat($target['format']);
-        }
-
-        // ensure properties is set even if empty, which makes little sense.
-        if ('object' === $type && empty($target['properties'])) {
-            $this->debug('! object %s has empty properties', $name);
-            $target['properties'] = [];
         }
 
         return $target;
@@ -919,12 +950,12 @@ class Swizzle
      *
      * @return bool
      */
-    protected function hasModel($id)
+    public function hasModel($id)
     {
         return isset($this->models[$id]);
     }
 
-    protected function hasOperation($id)
+    public function hasOperation($id)
     {
         return isset($this->operations[$id]);
     }
