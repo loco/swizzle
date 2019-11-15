@@ -40,7 +40,7 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
     public function testModelAddition(Swizzle $builder)
     {
         // mock a Swagger model definition with one mandatory property
-        $def = [
+        $builder->addModel([
             'id' => 'fooType',
             'properties' => [
                 'bar' => [
@@ -51,8 +51,12 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
             'required' => [
                 'bar',
             ],
-        ];
-        $builder->addModel($def);
+        ]);
+        // model won't be exposed unless used as top-level response type
+        $builder->addApi(['operations'=> [ [
+            'nickname' > 'getFoo',
+            'type' => 'fooType',
+        ]]]);
         $description = new Description($builder->toArray());
         $this->assertCount(1, $description->getModels());
         $foo = $description->getModel('fooType');
@@ -86,6 +90,10 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
         ];
         $builder->addModel($child);
         $builder->addModel($parent);
+        $builder->addApi(['operations'=> [ [
+            'nickname' > 'getBaz',
+            'type' => 'bazType',
+        ]]]);
         $description = new Description($builder->toArray());
         $baz = $description->getModel('bazType');
         $this->assertEquals('object', $baz->getProperty('bar')->getType());
@@ -123,10 +131,10 @@ class SwizzleTest extends \PHPUnit\Framework\TestCase
         $builder->addApi($api);
         $description = new Description($builder->toArray());
         $ops = $description->getOperations();
-        $this->assertCount(2, $ops, 'Wrong number of operations found');
+        $this->assertCount(3, $ops, 'Wrong number of operations found');
         // test specified command name:
         $this->assertArrayHasKey('getTest', $ops);
-        // test auto-geneated command name:
+        // test auto-generated command name:
         $this->assertArrayHasKey('put_test', $ops);
         return $builder;
     }

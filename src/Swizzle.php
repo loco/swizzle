@@ -64,12 +64,17 @@ class Swizzle
     /**
      * @var array[]
      */
-    private $models;
+    private $models = [];
+
+    /**
+     * @var true[]
+     */
+    private $responseModels = [];
 
     /**
      * @var Operation[]
      */
-    private $operations;
+    private $operations = [];
 
     /**
      * Construct with minimum mandatory parameters
@@ -95,6 +100,7 @@ class Swizzle
     {
         $this->models = [];
         $this->operations = [];
+        $this->responseModels = [];
         $this->serviceDescription = null;
     }
 
@@ -483,21 +489,22 @@ class Swizzle
                         $this->debug('+ adding custom response type %s', $name);
                         $this->models[$name] = ['name' => $name, 'type' => 'class', 'class' => $class, 'description' => 'Custom response class'];
                     }
-                    $config['responseModel'] = $name;
-                // TODO handle vanilla 'object' type
-                // Response may be a registered model
+                    // Response may be a registered model
                 } elseif ($this->hasModel($responseType)) {
-                    $config['responseModel'] = $responseType;
+                    $name = $responseType;
                 // Response may be a primitive type, like "string" but still required representing by a model
                 // This may also be a "array" in which case items->$ref will be resolved to a registered model
                 } elseif ($simpleType && $simpleType !== 'null') {
-                    $config['responseModel'] = $this->addModel($operationData)->getName();
+                    $name = $this->addModel($operationData)->getName();
                 // else model was not registered via api declaration which occurs before operations added
                 } else {
                     throw new \RuntimeException(
                         "Response model {$responseType} required by operation {$id} is not registered."
                     );
                 }
+                // register response model used. only models that are exposed at top-level need be exported
+                $config['responseModel'] = $name;
+                $this->responseModels[$name] = true;
             }
 
             // handle parameters
@@ -936,8 +943,8 @@ class Swizzle
             'description' => $this->init['description'],
         ];
         $result['operations'] = $this->operations;
-        if (!empty($this->models)) {
-            $result['models'] = $this->models;
+        if (!empty($this->responseModels)) {
+            $result['models'] = array_intersect_key($this->models, $this->responseModels);
         }
 
         return array_filter($result);
@@ -955,6 +962,14 @@ class Swizzle
         return isset($this->models[$id]);
     }
 
+
+    /**
+     * Check if the service description has an operation by name.
+     *
+     * @param string $id Name/ID of the operation to check
+     *
+     * @return bool
+     */
     public function hasOperation($id)
     {
         return isset($this->operations[$id]);
