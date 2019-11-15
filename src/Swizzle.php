@@ -366,16 +366,7 @@ class Swizzle
         if (isset($this->responseClasses[$name])) {
             $class = $this->responseClasses[$name];
             $data['class'] = $class;
-
-            if (is_subclass_of($class, ResultInterface::class)) {
-                $data['type'] = 'object';
-                if (is_array($data['additionalProperties']) === false) {
-                    $data['additionalProperties'] = [];
-                }
-                $data['additionalProperties']['location'] = $location;
-            } else {
-                $data['type'] = 'class';
-            }
+            $data['type'] = 'class';
         }
 
         // required makes no sense at root of model
