@@ -368,9 +368,9 @@ class Swizzle
                     $data['properties'][$key]['location'] = $location;
                 }
             }
-            // else vanilla "object" type if thus named
+            // else vanilla "object" type if thus named will have dynamic properties
             elseif ('object' ===  $name) {
-                $data['additionalProperties'] = true;
+                $data['additionalProperties'] = ['location'=>$this->responseType];
             }
             // else no point having a completely empty model
             else {
