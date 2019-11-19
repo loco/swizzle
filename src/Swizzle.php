@@ -67,6 +67,11 @@ class Swizzle
     private $models = [];
 
     /**
+     * @var true[]
+     */
+    private $exposedModels = [];
+
+    /**
      * @var Operation[]
      */
     private $operations = [];
@@ -412,6 +417,19 @@ class Swizzle
         return $model;
     }
 
+
+    /**
+     * @param string $name
+     */
+    private function exposeModel($name)
+    {
+        if ($this->hasModel($name) && ! isset($this->exposedModels[$name])) {
+            // $this->debug('~ model %s will be exposed', $name);
+            $this->exposedModels[$name] = 1;
+        }
+    }
+    
+
     /**
      * Add a Swagger Api declaration which may consist of multiple operations
      *
@@ -483,20 +501,23 @@ class Swizzle
                         $this->debug('+ adding custom response type %s', $name);
                         $this->models[$name] = ['name' => $name, 'type' => 'class', 'class' => $class, 'description' => 'Custom response class'];
                     }
-                    $config['responseModel'] = $name;
+                    $responseModel = $name;
                 // Response may be a registered model
                 } elseif ($this->hasModel($responseType)) {
-                    $config['responseModel'] = $responseType;
+                    $responseModel = $responseType;
                 // Response may be a primitive type, like "string" but still required representing by a model
                 // This may also be a "array" in which case items->$ref will be resolved to a registered model
                 } elseif ($simpleType && $simpleType !== 'null') {
-                    $config['responseModel'] = $this->addModel($operationData)->getName();
+                    $responseModel = $this->addModel($operationData)->getName();
                 // else model was not registered via api declaration which occurs before operations added
                 } else {
                     throw new \RuntimeException(
                         "Response model {$responseType} required by operation {$id} is not registered."
                     );
                 }
+                // mark model as being required in export so Guzzle can resolve $ref
+                $config['responseModel'] = $responseModel;
+                $this->exposeModel($responseModel);
             }
 
             // handle parameters
@@ -549,12 +570,14 @@ class Swizzle
                 if (! $this->hasModel($ref)) {
                     throw new \RuntimeException('Referenced '.$ref.' in parameter but model not registered');
                 }
-                // guzzle can resolve the $ref, but embedding for requests so we can map properly into unique namespace
-                // TODO if we're embedding, then we need to do it recursively because model may itself contain refs
-                // TODO this is insufficient for detecting request parameter binding. 
+                // guzzle can resolve the $ref, but not when its properties are the root of the body
                 if ('body' === $location) {
                     $param += $this->models[$ref];
                     unset($param['$ref']);
+                }
+                // else model must exposed to be resolvable
+                else {
+                    $this->exposeModel($ref);
                 }
             }
             // handle paramType -> location mapping.
@@ -717,6 +740,10 @@ class Swizzle
                         '$ref' => $model->getName(),
                     ];
                 }
+            }
+            // expose items/$ref
+            if (isset($target['items']['$ref'])) {
+                $this->exposeModel($target['items']['$ref']);
             }
         }
 
@@ -941,8 +968,8 @@ class Swizzle
             'description' => $this->init['description'],
         ];
         $result['operations'] = $this->operations;
-        if (!empty($this->models)) {
-            $result['models'] = $this->models;
+        if (!empty($this->exposedModels)) {
+            $result['models'] = array_intersect_key($this->models, $this->exposedModels);
         }
 
         return array_filter($result);
