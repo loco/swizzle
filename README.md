@@ -37,10 +37,9 @@ If you want to install straight from Github you'll have to write your own [autol
 Basic usage is to configure, build and export - as follows:
 
 ```php 
-$service = new Loco\Utils\Swizzle\Swizzle( 'foo', 'Foo API' );
-$service->build('http://foo.bar/path/to/swagger/docs/');
+$builder = new Loco\Utils\Swizzle\Swizzle( 'foo', 'Foo API' );
+$builder->build('http://foo.bar/path/to/swagger/docs/');
 // Serialize Guzzle service config to json
-$json = $service->toJson();
 file_put_contents('/path/to/config.json', $builder->toJson());
 // Now use saved config.json in your project/library to create Guzzle service.
 ```
